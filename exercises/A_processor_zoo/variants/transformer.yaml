@@ -1,0 +1,185 @@
+# =============================================================================
+# AIWCAS 2026 hour 2 -- Option A "processor zoo" -- SOLUTION variant (Transformer)
+#
+# Same data, graph, loss and training recipe as every other option-A run; only the
+# processor changes. This is the Transformer answer: global
+# self-attention between the hidden nodes instead of message passing along mesh edges.
+#
+#   anemoi-training config validate --config-path exercises/A_processor_zoo/variants --config-name transformer
+#   scripts/submit.sh exercises/A_processor_zoo/variants/transformer.yaml
+#
+# Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
+# =============================================================================
+defaults:
+  - data: zarr
+  - dataloader: native_grid
+  - diagnostics: evaluation
+  - system: example
+  - graph: multi_scale            # nodes from multi_scale, edges overridden below
+  - model: transformer
+  - task: forecaster
+  - training: single
+  - _self_
+
+config_validation: True
+
+hydra:
+  run:
+    dir: ${oc.env:SCRATCH}/aiwcas26/hour2/hydra/${now:%Y-%m-%d_%H-%M-%S}
+
+# ----------------------------------------------------------------------------- system
+system:
+  hardware:
+    accelerator: cuda
+    num_gpus_per_node: 1
+    num_nodes: 1
+    num_gpus_per_model: 1
+  input:
+    dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/aifs-ea-an-oper-0001-mars-o96-2017-2017-6h-v8-testing.zarr
+    # Built on the first run, then reused (graph.overwrite: False). The file name
+    # encodes the recipe: change the name if you change the graph section!
+    graph: ${oc.env:SCRATCH}/aiwcas26/hour2/graphs/o96_encdec_tri4.pt
+  output:
+    root: ${oc.env:SCRATCH}/aiwcas26/hour2/A_processor_zoo
+
+# ----------------------------------------------------------------------------- dataloader
+dataloader:
+  num_workers:
+    training: 6
+    validation: 2
+    test: 1
+  batch_size:
+    training: 1
+    validation: 1
+    test: 1
+  limit_batches:
+    training: null
+    validation: 4
+    test: 1
+  training:
+    datasets:
+      data:
+        start: 2017-01-01
+        end: 2017-01-08
+  validation:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+  test:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+
+# ----------------------------------------------------------------------------- graph
+# Same nodes as the GNN/GT graph, but only the encoder and decoder edges: the Transformer
+# processor attends over the hidden nodes and needs NO hidden->hidden edges (with them the
+# model fails with "AssertionError: Edge attributes must be provided").
+graph:
+  overwrite: False
+  nodes:
+    hidden:
+      node_builder:
+        resolution: 4             # 2562 hidden nodes, as for GNN / GraphTransformer
+  edges:                          # a list replaces the default list as a whole
+  - source_name: data             # encoder: data -> hidden
+    target_name: hidden
+    edge_builders:
+    - _target_: anemoi.graphs.edges.CutOffEdges
+      cutoff_factor: 0.6
+      source_mask_attr_name: null
+      target_mask_attr_name: null
+    attributes: ${graph.attributes.edges}
+  - source_name: hidden           # decoder: hidden -> data
+    target_name: data
+    edge_builders:
+    - _target_: anemoi.graphs.edges.KNNEdges
+      num_nearest_neighbours: 3
+      source_mask_attr_name: null
+      target_mask_attr_name: null
+    attributes: ${graph.attributes.edges}
+
+# ----------------------------------------------------------------------------- model
+model:
+  num_channels: 64
+  compile: null
+  # model/transformer.yaml (models-0.19.0) lacks these two keys when used standalone:
+  latent_aggregator:
+    _target_: anemoi.models.layers.aggregator.SumAggregator
+  processor:
+    num_layers: 4
+    num_chunks: 1
+    num_heads: 4
+    window_size: null             # null = global attention over all 2562 hidden nodes (cheap here)
+    attention_implementation: scaled_dot_product_attention   # flash-attn is not installed
+  encoders:
+    "0":
+      mapper:
+        num_chunks: 1
+        num_heads: 4
+        graph_attention_backend: triton   # the mappers are still graph transformers
+  decoders:
+    "0":
+      mapper:
+        num_channels: ${model.num_channels}   # missing in model/transformer.yaml
+        num_chunks: 1
+        num_heads: 4
+        graph_attention_backend: triton
+
+# ----------------------------------------------------------------------------- task
+task:
+  multistep_input: 2
+  rollout:
+    start: 1
+    epoch_increment: 0
+    maximum: 1
+
+# ----------------------------------------------------------------------------- training
+training:
+  max_epochs: null
+  max_steps: 500
+  num_sanity_val_steps: 0
+  precision: 16-mixed
+  optimization:
+    lr: 1.0e-3
+    lr_scheduler:
+      warmup_t: 20
+      lr_min: 1.0e-5
+
+# ----------------------------------------------------------------------------- diagnostics
+diagnostics:
+  callbacks: []
+  log:
+    mlflow:
+      enabled: True
+      offline: True
+      tracking_uri: null
+      authentication: False
+      experiment_name: hour2-A    # keep: the scoreboard uses it as the option label
+      run_name: A-transformer
+      terminal: False
+      system: False
+    interval: 10
+  plot:
+    settings:
+      datashader: False
+    callbacks: []
+  benchmark_profiler:
+    memory:
+      enabled: False
+    snapshot:
+      enabled: False
+  checkpoint:
+    every_n_minutes:
+      save_frequency: null
+      num_models_saved: 0
+    every_n_epochs:
+      save_frequency: 5
+      num_models_saved: 1
+    every_n_train_steps:
+      save_frequency: null
+      num_models_saved: 0
+  progress_bar:
+    _target_: pytorch_lightning.callbacks.TQDMProgressBar
+    refresh_rate: 10

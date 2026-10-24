@@ -9,9 +9,9 @@
 #SBATCH --cpus-per-task=8            # dataloader workers live here; billing is per core
 #SBATCH --mem=60G
 #SBATCH --time=00:10:00
-#SBATCH --output=/leonardo_scratch/large/usertrain/a08trd25/aiwcas26/logs/%x-%j.out
-# NOTE: #SBATCH lines cannot expand $SCRATCH; edit the --output path above
-#       (or pass `sbatch --output=...`) if you are not user a08trd25.
+#SBATCH --output=%x-%j.out           # in the submit dir (#SBATCH lines cannot expand $SCRATCH)
+# To put the log in $SCRATCH instead:  sbatch --output=$SCRATCH/aiwcas26/logs/%x-%j.out scripts/train_tiny.sbatch
+# Generic version for any config (used in hour 2): scripts/submit.sh <config.yaml>
 #
 # Tiny anemoi-training run on 1 A100 (AIWCAS 2026 tutorial).
 #   sbatch scripts/train_tiny.sbatch                       # from the repo root

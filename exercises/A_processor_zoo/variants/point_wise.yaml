@@ -1,0 +1,214 @@
+# =============================================================================
+# AIWCAS 2026 hour 2 -- Option A "processor zoo" -- SOLUTION variant (point-wise MLP)
+#
+# Same data, graph, loss and training recipe as every other option-A run; only the
+# processor changes. This is the point-wise MLP baseline: every
+# grid point is processed on its own, no spatial interaction at all. Expect it to
+# plateau higher than the others: that is the point ("why message passing matters").
+#
+#   anemoi-training config validate --config-path exercises/A_processor_zoo/variants --config-name point_wise
+#   scripts/submit.sh exercises/A_processor_zoo/variants/point_wise.yaml
+#
+# Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
+# =============================================================================
+defaults:
+  - data: zarr
+  - dataloader: native_grid
+  - diagnostics: evaluation
+  - system: example
+  - graph: point_wise             # data nodes only, no edges
+  - model: null                   # NOT model/point_wise.yaml: in models-0.19.0 it fails the schema
+                                  #   (mappers carry a forbidden trainable_size, num_channels missing)
+                                  #   and YAML merging cannot delete keys, so the model is written out below
+  - task: forecaster
+  - training: single
+  - _self_
+
+config_validation: True
+
+hydra:
+  run:
+    dir: ${oc.env:SCRATCH}/aiwcas26/hour2/hydra/${now:%Y-%m-%d_%H-%M-%S}
+
+# ----------------------------------------------------------------------------- system
+system:
+  hardware:
+    accelerator: cuda
+    num_gpus_per_node: 1
+    num_nodes: 1
+    num_gpus_per_model: 1
+  input:
+    dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/aifs-ea-an-oper-0001-mars-o96-2017-2017-6h-v8-testing.zarr
+    # Built on the first run, then reused (graph.overwrite: False). The file name
+    # encodes the recipe: change the name if you change the graph section!
+    graph: ${oc.env:SCRATCH}/aiwcas26/hour2/graphs/o96_point_wise.pt
+  output:
+    root: ${oc.env:SCRATCH}/aiwcas26/hour2/A_processor_zoo
+
+# ----------------------------------------------------------------------------- dataloader
+dataloader:
+  num_workers:
+    training: 6
+    validation: 2
+    test: 1
+  batch_size:
+    training: 1
+    validation: 1
+    test: 1
+  limit_batches:
+    training: null
+    validation: 4
+    test: 1
+  training:
+    datasets:
+      data:
+        start: 2017-01-01
+        end: 2017-01-08
+  validation:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+  test:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+
+# ----------------------------------------------------------------------------- graph
+# graph/point_wise.yaml: only the data nodes, no edges, no hidden mesh. Do NOT set
+# graph.nodes.hidden here (point_wise has no hidden node set).
+graph:
+  overwrite: False
+
+# ----------------------------------------------------------------------------- model
+# The packaged model/point_wise.yaml, fixed for this version and shrunk to 64 channels / 4 layers.
+model:
+  num_channels: 64
+  cpu_offload: False
+  keep_batch_sharded: True
+  compile: null
+  model:
+    _target_: anemoi.models.models.AnemoiModelEncProcDec
+    hidden_nodes_name: data       # the "hidden" nodes ARE the 40320 grid points
+    latent_skip: True
+  layer_kernels:
+    LayerNorm:
+      _target_: torch.nn.LayerNorm
+    Linear:
+      _target_: torch.nn.Linear
+    Activation:
+      _target_: torch.nn.GELU
+  processor:                      # an MLP applied to every grid point independently: no neighbours at all
+    _target_: anemoi.models.layers.processor.PointWiseMLPProcessor
+    num_channels: ${model.num_channels}
+    num_layers: 4
+    num_chunks: 1
+    mlp_hidden_ratio: 4
+    cpu_offload: ${model.cpu_offload}
+    gradient_checkpointing: True
+    layer_kernels: ${model.layer_kernels}
+  encoders:
+    "0":
+      source_datasets: [data]
+      dataset_fusing_strategy: not_supported
+      mapper:
+        _target_: anemoi.models.layers.mapper.PointWiseForwardMapper
+        num_channels: ${model.num_channels}
+        cpu_offload: ${model.cpu_offload}
+        gradient_checkpointing: True
+        layer_kernels: ${model.layer_kernels}
+  latent_aggregator:
+    _target_: anemoi.models.layers.aggregator.SumAggregator
+  decoders:
+    "0":
+      target_datasets: [data]
+      target_node_features: [encoded_data]
+      mapper:
+        _target_: anemoi.models.layers.mapper.PointWiseBackwardMapper
+        num_channels: ${model.num_channels}
+        initialise_data_extractor_zero: False
+        cpu_offload: ${model.cpu_offload}
+        gradient_checkpointing: True
+        layer_kernels: ${model.layer_kernels}
+  residual:
+    datasets:
+      data:
+        _target_: anemoi.models.layers.residual.SkipConnection
+        step: -1
+  output_mask:
+    datasets:
+      data:
+        _target_: anemoi.training.utils.masks.NoOutputMask
+  node_trainable_parameters:
+    data: 8
+    hidden: 8
+  edge_trainable_parameters:
+    data2hidden: 8
+    hidden2hidden: 8
+    hidden2data: 8
+  attributes:
+    edges: []
+    nodes: []
+  bounding:
+    datasets:
+      data:
+        - _target_: anemoi.models.layers.bounding.ReluBounding   # tp >= 0
+          variables: [tp]
+
+# ----------------------------------------------------------------------------- task
+task:
+  multistep_input: 2
+  rollout:
+    start: 1
+    epoch_increment: 0
+    maximum: 1
+
+# ----------------------------------------------------------------------------- training
+training:
+  max_epochs: null
+  max_steps: 500
+  num_sanity_val_steps: 0
+  precision: 16-mixed
+  optimization:
+    lr: 1.0e-3
+    lr_scheduler:
+      warmup_t: 20
+      lr_min: 1.0e-5
+
+# ----------------------------------------------------------------------------- diagnostics
+diagnostics:
+  callbacks: []
+  log:
+    mlflow:
+      enabled: True
+      offline: True
+      tracking_uri: null
+      authentication: False
+      experiment_name: hour2-A    # keep: the scoreboard uses it as the option label
+      run_name: A-point_wise
+      terminal: False
+      system: False
+    interval: 10
+  plot:
+    settings:
+      datashader: False
+    callbacks: []
+  benchmark_profiler:
+    memory:
+      enabled: False
+    snapshot:
+      enabled: False
+  checkpoint:
+    every_n_minutes:
+      save_frequency: null
+      num_models_saved: 0
+    every_n_epochs:
+      save_frequency: 5
+      num_models_saved: 1
+    every_n_train_steps:
+      save_frequency: null
+      num_models_saved: 0
+  progress_bar:
+    _target_: pytorch_lightning.callbacks.TQDMProgressBar
+    refresh_rate: 10

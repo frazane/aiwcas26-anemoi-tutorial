@@ -5,7 +5,7 @@ Hands-on tutorial on [Anemoi](https://anemoi.readthedocs.io), ECMWF's machine-le
 ## Getting the code
 
 ```bash
-git clone --recurse-submodules <REPO_URL>
+git clone --recurse-submodules https://github.com/frazane/aiwcas26-anemoi-tutorial.git
 cd aiwcas26-anemoi-tutorial
 ```
 
@@ -21,7 +21,9 @@ git submodule update --init
 README.md       this file
 AGENTS.md       rules and gotchas for coding agents
 notebooks/      tutorial notebooks
-scripts/        helper scripts (e.g. Slurm smoke test)
+exercises/      hour 2: "pick your setup" menu (skeleton + solution configs, compare.ipynb); start at exercises/README.md
+configs/        configs used by the notebooks (e.g. 04_tiny_train.yaml)
+scripts/        helper scripts (Slurm smoke test, submit.sh / train.sbatch for any config, scoreboard)
 src/
   anemoi-core/      submodule, monorepo (graphs, models, training), tag training-0.17.1
   anemoi-datasets/  submodule, tag 0.5.47

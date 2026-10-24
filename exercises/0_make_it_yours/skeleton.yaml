@@ -1,0 +1,177 @@
+# =============================================================================
+# AIWCAS 2026 hour 2 -- Option 0 "make the base yours" -- SKELETON
+#
+# The hour-1 GNN forecaster (same model as configs/04_tiny_train.yaml), with YOUR
+# choices. Fill every ??? :
+#   TODO(1) which variables the model sees      TODO(2) a loss weight
+#   TODO(3) how many input time steps           TODO(4) the rollout length
+#   TODO(5) name your run
+#
+#   cp exercises/0_make_it_yours/skeleton.yaml exercises/0_make_it_yours/mine.yaml   # edit mine.yaml
+#   anemoi-training config validate --config-path exercises/0_make_it_yours --config-name mine
+#   scripts/submit.sh exercises/0_make_it_yours/mine.yaml
+#
+# Stuck? solution.yaml is one possible answer.
+#
+# Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
+# =============================================================================
+defaults:
+  - data: zarr                    # forcing / diagnostic lists, normalisers
+  - dataloader: native_grid
+  - diagnostics: evaluation
+  - system: example
+  - graph: multi_scale
+  - model: gnn
+  - task: forecaster
+  - training: single
+  - _self_
+
+config_validation: True
+
+hydra:
+  run:
+    dir: ${oc.env:SCRATCH}/aiwcas26/hour2/hydra/${now:%Y-%m-%d_%H-%M-%S}
+
+# ----------------------------------------------------------------------------- system
+system:
+  hardware:
+    accelerator: cuda
+    num_gpus_per_node: 1
+    num_nodes: 1
+    num_gpus_per_model: 1
+  input:
+    dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/aifs-ea-an-oper-0001-mars-o96-2017-2017-6h-v8-testing.zarr
+    # Same graph as option A (built on the first run, then reused). Selecting
+    # variables does not change the grid, so the graph does not change either.
+    graph: ${oc.env:SCRATCH}/aiwcas26/hour2/graphs/o96_multiscale_tri4.pt
+  output:
+    root: ${oc.env:SCRATCH}/aiwcas26/hour2/0_make_it_yours
+
+# ----------------------------------------------------------------------------- dataloader
+dataloader:
+  num_workers:
+    training: 6
+    validation: 2
+    test: 1
+  batch_size:
+    training: 1
+    validation: 1
+    test: 1
+  limit_batches:
+    training: null
+    validation: 4
+    test: 1
+  training:
+    datasets:
+      data:
+        dataset_config:
+          # TODO(1): the variables the model sees, as a list: select: [10u, 10v, ...]
+          # The dataset has 101 variables (O96 ERA5, 2017-01-01..10, 6-hourly):
+          #   forcings (inputs only; data/zarr.yaml lists them, so KEEP all 13):
+          #     cos_latitude cos_longitude sin_latitude sin_longitude cos_julian_day
+          #     cos_local_time sin_julian_day sin_local_time insolation lsm sdor slor z
+          #   diagnostics (outputs only; also listed in data/zarr.yaml, so KEEP):  tp cp
+          #   surface prognostics:  10u 10v 2d 2t msl sp skt tcw
+          #   pressure levels <p> in 50 100 150 200 250 300 400 500 600 700 850 925 1000 hPa:
+          #     q_<p> t_<p> u_<p> v_<p> w_<p> z_<p>     (e.g. t_850, z_500)
+          # Fewer outputs = an easier loss: compare raw losses only with runs that
+          # select the same variables (the scoreboard groups runs for you).
+          select: ???
+        start: 2017-01-01
+        end: 2017-01-08
+  validation:
+    datasets:
+      data:
+        dataset_config:
+          select: ${dataloader.training.datasets.data.dataset_config.select}
+        start: 2017-01-09
+        end: 2017-01-10
+  test:
+    datasets:
+      data:
+        dataset_config:
+          select: ${dataloader.training.datasets.data.dataset_config.select}
+        start: 2017-01-09
+        end: 2017-01-10
+
+# ----------------------------------------------------------------------------- graph
+graph:
+  overwrite: False
+  nodes:
+    hidden:
+      node_builder:
+        resolution: 4
+
+# ----------------------------------------------------------------------------- model
+model:
+  num_channels: 64
+  compile: null
+  processor:
+    num_layers: 4
+    num_chunks: 1
+
+# ----------------------------------------------------------------------------- task
+task:
+  multistep_input: ???            # TODO(3): input states (t, t-6h, ...); hour 1 used 2
+  rollout:
+    start: ???                    # TODO(4): autoregressive steps per training step (1 = none).
+    epoch_increment: 0            #   Each step costs time and memory, and removes one
+    maximum: ???                  #   training sample. Use the same value for start and maximum.
+
+# ----------------------------------------------------------------------------- training
+training:
+  max_epochs: null
+  max_steps: 500
+  num_sanity_val_steps: 0
+  precision: 16-mixed
+  optimization:
+    lr: 1.0e-3
+    lr_scheduler:
+      warmup_t: 20
+      lr_min: 1.0e-5
+  scalers:
+    datasets:
+      data:
+        general_variable:
+          weights:
+            # Packaged weights (training/scalers/global.yaml): default 1, q 0.6, t 6,
+            # u 0.8, v 0.5, w 0.001, z 12, sp 10, 10u/10v 0.1, 2d 0.5, tp 0.025, cp 0.0025.
+            # Keys are variables (2t) or parameter names (t = every t_<p> level).
+            2t: ???               # TODO(2): how much should 2 m temperature count? (default 1)
+
+# ----------------------------------------------------------------------------- diagnostics
+diagnostics:
+  callbacks: []
+  log:
+    mlflow:
+      enabled: True
+      offline: True
+      tracking_uri: null
+      authentication: False
+      experiment_name: hour2-0    # keep: the scoreboard uses it as the option label
+      run_name: ???                 # TODO(5): e.g. 0-sfc-ms1-r2-<yourname>; shows up on the scoreboard
+      terminal: False
+      system: False
+    interval: 10
+  plot:
+    settings:
+      datashader: False
+    callbacks: []
+  benchmark_profiler:
+    memory:
+      enabled: False
+    snapshot:
+      enabled: False
+  checkpoint:
+    every_n_minutes:
+      save_frequency: null
+      num_models_saved: 0
+    every_n_epochs:
+      save_frequency: 5
+      num_models_saved: 1
+    every_n_train_steps:
+      save_frequency: null
+      num_models_saved: 0
+  progress_bar:
+    _target_: pytorch_lightning.callbacks.TQDMProgressBar
+    refresh_rate: 10
