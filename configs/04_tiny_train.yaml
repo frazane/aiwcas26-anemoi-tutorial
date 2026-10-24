@@ -5,14 +5,14 @@
 # dataset on ONE GPU, in a few minutes, so you can watch the loss go down.
 # It is NOT meant to produce a useful forecast model.
 #
-#   anemoi-training config validate --config-path configs --config-name 04_tiny_train
-#   anemoi-training train            --config-path configs --config-name 04_tiny_train
+#   anemoi-training config validate --config-path $PWD/configs --config-name 04_tiny_train
+#   anemoi-training train            --config-path $PWD/configs --config-name 04_tiny_train
 #   # (or: sbatch scripts/train_tiny.sbatch)
 #
 # Everything not set here comes from the packaged defaults listed below; see
 #   anemoi-training config generate -o my_configs/   (copies every default yaml)
 # Command-line overrides win over this file, e.g.
-#   anemoi-training train --config-name 04_tiny_train training.max_steps=50 model.num_channels=32
+#   anemoi-training train --config-path $PWD/configs --config-name 04_tiny_train training.max_steps=50 model.num_channels=32
 # =============================================================================
 defaults:
   - data: zarr                  # variables: forcing / diagnostic lists, normalisers

@@ -45,5 +45,6 @@ skeleton already switches it off with `diagnostics.callbacks: []`, and the ensem
 
 The afCRPS drops clearly within the job: members start with a random spread and learn to agree with the
 analysis. The value is **not** comparable with the MSE of options 0/A, so use the normalised plot in
-`compare.ipynb`. A step costs more than option A's deterministic GraphTransformer, because every member
-goes through the whole model. GPU-tested numbers are in `../README.md`.
+`compare.ipynb`. At this tiny size a training step costs about the same as option A's deterministic GraphTransformer
+(9.2 vs 9.5 it/s), but it needs twice the GPU memory and validation is slower. At production size every
+member is a full pass through the model, so the cost grows with the number of members. GPU-tested numbers are in `../README.md`.

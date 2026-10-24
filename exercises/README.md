@@ -115,7 +115,7 @@ exercises/
   0_make_it_yours/           README, skeleton.yaml, solution.yaml
   A_processor_zoo/           README, skeleton.yaml, solution.yaml (GraphTransformer), variants/{gnn,transformer,point_wise}.yaml
   C_ensemble_crps/           README, skeleton.yaml, solution.yaml
-  B1_lam/                    README, skeleton.yaml, solution.yaml, lam_graph.png/.svg (map of the LAM graph)
+  B1_lam/                    README, skeleton.yaml, solution.yaml, lam_graph.png (map of the LAM graph)
 scripts/
   submit.sh                  submit any config:  scripts/submit.sh <config.yaml> [--name N] [overrides]
   train.sbatch               the generic 1-GPU job behind submit.sh

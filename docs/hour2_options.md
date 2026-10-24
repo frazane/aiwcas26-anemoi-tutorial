@@ -1,6 +1,10 @@
 # Hour 2: "pick your setup" menu (design proposal)
 
-Status: design only, nothing implemented. Verified against the pinned sources
+> **Update:** options 0, A, B1 (Italy LAM) and C are now implemented and GPU-tested in `exercises/`;
+> `exercises/README.md` and the option READMEs are authoritative for students. This document is the
+> original design proposal and its timings are pre-measurement estimates.
+
+Original status: design only, nothing implemented. Verified against the pinned sources
 (`training-0.17.1` / `models-0.19.0` / `graphs-0.9.8` / `anemoi-datasets 0.5.47`) on 2026-10-24.
 Paths below are relative to `src/anemoi-core/training/` unless they say otherwise.
 `CFG/` = `src/anemoi/training/config/`, `IT/` = `tests/integration/`.

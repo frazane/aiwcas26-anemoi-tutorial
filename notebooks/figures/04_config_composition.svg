@@ -52,7 +52,7 @@
   <!-- your file + CLI -->
   <rect x="20" y="516" width="250" height="40" rx="6" fill="#fdf0ea" stroke="#eb6834" stroke-width="1.5"/>
   <text x="36" y="535" class="g">your YAML</text><text x="128" y="535" class="o">04_tiny_train.yaml</text>
-  <text x="36" y="550" class="s">defaults: list + _self_ overrides</text>
+  <text x="36" y="550" class="s">defaults list + _self_ overrides</text>
   <rect x="20" y="564" width="250" height="40" rx="6" fill="#fdf0ea" stroke="#eb6834" stroke-width="1.5" stroke-dasharray="5 3"/>
   <text x="36" y="583" class="g">command line</text><text x="140" y="583" class="o">key=value</text>
   <text x="36" y="598" class="s">highest priority, last word</text>
