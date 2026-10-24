@@ -5,3 +5,4 @@ outputs/
 *.out
 *.pt
 exercises/**/mine*.yaml
+exercises/B1_lam/lam_graph.svg

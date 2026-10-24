@@ -30,8 +30,8 @@ Every finished hour-2 job appends one row to the shared scoreboard
 (see `scripts/scoreboard.py`). This notebook reads only those shared files, so it shows **everybody's** runs, not
 just yours. Re-run it (*Run → Run All Cells*) whenever new runs come in.
 
-The options train different things with different losses (MSE, afCRPS, different variable sets), so raw loss
-values are **not** comparable across the room. We therefore look at three things:
+The options train different things with different losses (MSE, afCRPS, an MSE over Italy only for the LAM of
+option B1, different variable sets), so raw loss values are **not** comparable across the room. We therefore look at three things:
 
 1. **Did everybody learn, and how fast?** Training loss divided by its own starting value, against step and
    against wall time (the wall-time axis includes the ~3–4 min of job startup, which is the real cost of a short job).
@@ -152,7 +152,8 @@ md(r"""
 
 Runs are grouped by `compare_group` = loss function | number of output variables | rollout (option 0 also by its
 loss weights). Only inside a group do raw numbers mean "better" or "worse". Option A's architectures all share one
-group: that is the point of the zoo.
+group: that is the point of the zoo. Option B1's loss is marked `MSE(LAM)`: it is computed only on the CERRA points
+over Italy (5 output variables), so B1 runs form their own group.
 """)
 
 code(r"""
@@ -225,6 +226,9 @@ md(r"""
 * **0:** fewer output variables or a longer rollout change the loss itself: compare only inside a group.
 * **C:** afCRPS is not MSE, so only the normalised plot puts it next to the others. What do 4 members cost
   compared with the deterministic GraphTransformer of option A?
+* **B1:** the LAM predicts only Italy, at 22 km, from 5 variables and a 300 km ring of global boundary points.
+  Its loss is not comparable with the global options; compare B1 runs with each other (area, thinning, hidden
+  resolution). How does its cost per step compare with the global models?
 * **Startup:** for these 5-minute jobs most of the wall time is imports and setup, not training.
 """)
 

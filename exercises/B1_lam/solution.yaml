@@ -1,0 +1,225 @@
+# =============================================================================
+# AIWCAS 2026 hour 2 -- Option B1 "Italy limited-area model (LAM)" -- SOLUTION
+#
+# A REGIONAL 6-hour forecaster over Italy. Inside the box: CERRA, the 5.5 km
+# European regional reanalysis (here thinned to ~22 km). Around it: a 300 km
+# ring of global ERA5 O96 points, used only as BOUNDARY FORCING. anemoi-datasets
+# glues the two together with `cutout`; the graph puts hidden nodes only over
+# Italy, and the model predicts (and is scored) only on the CERRA points.
+# Upstream recipe: src/anemoi-core/training/src/anemoi/training/config/lam.yaml
+# and .../tests/integration/config/test_lam.yaml (same data pair, CI-tested).
+#
+#   anemoi-training config validate --config-path exercises/B1_lam --config-name solution
+#   scripts/submit.sh exercises/B1_lam/solution.yaml
+#
+# Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
+# =============================================================================
+defaults:
+  - data: zarr
+  - dataloader: native_grid
+  - diagnostics: evaluation
+  - system: example
+  - graph: limited_area           # TODO(1) answer: hidden mesh only over the LAM, boundary edges
+  - model: graphtransformer
+  - task: forecaster
+  - training: lam                 # TODO(1) answer: LAM scalers + the mse_inside_lam metric
+  - _self_
+
+config_validation: True
+
+hydra:
+  run:
+    dir: ${oc.env:SCRATCH}/aiwcas26/hour2/hydra/${now:%Y-%m-%d_%H-%M-%S}
+
+# ----------------------------------------------------------------------------- system
+system:
+  hardware:
+    accelerator: cuda
+    num_gpus_per_node: 1
+    num_nodes: 1
+    num_gpus_per_model: 1
+  input:
+    # CERRA, cut to a 322 x 294 window (5.5 km) around Italy by scripts/crop_cerra.py: the full
+    # sample stores each date as one 78 MB chunk, far too slow to read for every training sample.
+    dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/cerra-rr-an-oper-0001-mars-5p5km-2017-2017-6h-v3-testing-italy.zarr
+    # Global ERA5 O96 (~1 deg), the same sample as options 0/A/C
+    forcing_dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/aifs-ea-an-oper-0001-mars-o96-2017-2017-6h-v8-testing.zarr
+    # Built on the first run (~10 s), then reused (graph.overwrite: False below). The name follows
+    # thinning and hidden resolution automatically; if you change the AREA or max_distance_km,
+    # change the "italy" part too, or the old graph (with the old points) is reused.
+    graph: ${oc.env:SCRATCH}/aiwcas26/hour2/graphs/lam_italy_thin${dataloader.dataset.cutout[0].thinning}_tri${graph.nodes.hidden.node_builder.resolution}.pt
+  output:
+    root: ${oc.env:SCRATCH}/aiwcas26/hour2/B1_lam
+
+# ----------------------------------------------------------------------------- dataloader
+dataloader:
+  # One dataset made of two: the LAM points first, then the global points around it.
+  dataset:
+    cutout:
+      - dataset: ${system.input.dataset}      # TODO(2) answer: the LAM goes FIRST ...
+        area: [48, 5, 35, 20]                 # TODO(3) answer: N, W, S, E (Italy, incl. Corsica and the Alps)
+        thinning: 4                           # TODO(3) answer: every 4th row/column: 5.5 km -> 22 km, 3812 points
+      - dataset: ${system.input.forcing_dataset}  # TODO(2) answer: ... the global dataset second
+    adjust: all                   # keep only the variables (and dates) both datasets have
+    min_distance_km: 0            # drop only the global points that fall inside the LAM
+    max_distance_km: 300          # TODO(4) answer: keep a 300 km ring of global points (136) as boundary
+  num_workers:
+    training: 6
+    validation: 2
+    test: 1
+  batch_size:
+    training: 1
+    validation: 1
+    test: 1
+  limit_batches:
+    training: null
+    validation: 4
+    test: 1
+  training:
+    datasets:
+      data:
+        start: 2017-01-01
+        end: 2017-01-08
+  validation:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+  test:
+    datasets:
+      data:
+        start: 2017-01-09
+        end: 2017-01-10
+
+# ----------------------------------------------------------------------------- data
+# Only 13 variables exist in BOTH datasets: msl, sp, t_50, t_100, tp and 8 cos/sin forcings.
+# The data/zarr.yaml defaults (lsm, z, insolation, sdor, slor, cp) are ERA5-only.
+data:
+  datasets:
+    data:
+      forcing:                    # TODO(5) answer: the forcings CERRA has too
+        - cos_latitude
+        - cos_longitude
+        - sin_latitude
+        - sin_longitude
+        - cos_julian_day
+        - cos_local_time
+        - sin_julian_day
+        - sin_local_time
+      diagnostic:                 # TODO(5) answer: output only (no cp in CERRA)
+        - tp
+      processors:
+        normalizer:
+          config:
+            default: mean-std
+            std:
+              - tp
+            min-max:
+            max:
+            none:
+              - cos_latitude
+              - cos_longitude
+              - sin_latitude
+              - sin_longitude
+              - cos_julian_day
+              - cos_local_time
+              - sin_julian_day
+              - sin_local_time
+
+# ----------------------------------------------------------------------------- graph
+graph:
+  overwrite: False                # graph/limited_area.yaml says True (rebuild every run): we cache it
+  nodes:
+    hidden:
+      node_builder:
+        resolution: 7             # TODO(6) answer: icosahedron level 7 = ~60 km spacing, 410 nodes over the LAM
+
+# ----------------------------------------------------------------------------- model
+model:
+  num_channels: 64
+  compile: null                   # no torch.compile: it costs minutes of a 10-min job
+  output_mask:                    # TODO(7) answer: predict (and score) only where cutout_mask is True
+    datasets:
+      data:
+        _target_: anemoi.training.utils.masks.Boolean1DMask
+        attribute_name: cutout_mask
+  processor:
+    num_layers: 4
+    num_chunks: 1
+    num_heads: 4                  # 64 channels / 4 heads = 16 per head
+    graph_attention_backend: triton   # fallback "pyg" if triton fails
+  encoders:
+    "0":
+      mapper:
+        num_chunks: 1
+        num_heads: 4
+        graph_attention_backend: triton
+  decoders:
+    "0":
+      mapper:
+        num_chunks: 1
+        num_heads: 4
+        graph_attention_backend: triton
+
+# ----------------------------------------------------------------------------- task
+task:
+  multistep_input: 2
+  rollout:
+    start: 1
+    epoch_increment: 0
+    maximum: 1
+
+# ----------------------------------------------------------------------------- training
+training:
+  max_epochs: null
+  max_steps: 500
+  num_sanity_val_steps: 0
+  precision: 16-mixed
+  optimization:
+    lr: 1.0e-3
+    lr_scheduler:
+      warmup_t: 20
+      lr_min: 1.0e-5
+  metrics:                        # training/lam.yaml lists z_500, t_850, ... (not in this data)
+    datasets:
+      data:
+        - msl
+        - t_50
+        - tp
+
+# ----------------------------------------------------------------------------- diagnostics
+diagnostics:
+  callbacks: []
+  log:
+    mlflow:
+      enabled: True
+      offline: True
+      tracking_uri: null
+      authentication: False
+      experiment_name: hour2-B1   # keep: the scoreboard uses it as the option label
+      run_name: B1-lam-thin4-tri7 # TODO(8) answer
+      terminal: False
+      system: False
+    interval: 10
+  plot:
+    settings:
+      datashader: False
+    callbacks: []
+  benchmark_profiler:
+    memory:
+      enabled: False
+    snapshot:
+      enabled: False
+  checkpoint:
+    every_n_minutes:
+      save_frequency: null
+      num_models_saved: 0
+    every_n_epochs:
+      save_frequency: 5
+      num_models_saved: 1
+    every_n_train_steps:
+      save_frequency: null
+      num_models_saved: 0
+  progress_bar:
+    _target_: pytorch_lightning.callbacks.TQDMProgressBar
+    refresh_rate: 10

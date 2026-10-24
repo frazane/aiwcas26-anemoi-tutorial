@@ -123,6 +123,11 @@ def describe(cfg: dict, metadata: dict) -> dict:
             loss = "afCRPS" if alpha not in (None, 1.0, 0.0) else ("fCRPS" if alpha == 1.0 else "CRPS")
             loss += f"(a={alpha})"
     loss = loss.replace("Loss", "")
+    # Limited-area model (option B1): the loss only covers the LAM points (output_mask), on a
+    # different grid and variable set, so it gets its own label and comparison group.
+    out_mask = model.get("output_mask", {}).get("datasets", {}).get("data", {}) or {}
+    if short_target(out_mask.get("_target_")) == "Boolean1DMask":
+        loss += "(LAM)"
 
     rollout = task.get("rollout", {})
     r_start, r_max = rollout.get("start"), rollout.get("maximum")

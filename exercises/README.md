@@ -8,10 +8,10 @@ train it on one GPU for a few minutes, and see how it compares with the rest of 
 | **0** | [make the base yours](0_make_it_yours/) | the hour-1 GNN with your variables, loss weights, input history and rollout | data selection, forcing / diagnostic / prognostic variables, loss scalers, rollout | ★ | ~6 min |
 | **A** | [processor zoo](A_processor_zoo/) | the same forecaster with a GNN, GraphTransformer, Transformer or point-wise MLP processor | the architecture is a config choice: encoder → **processor** → decoder | ★ | ~6 min |
 | **C** | [ensemble CRPS](C_ensemble_crps/) | a 4-member ensemble trained with the almost-fair CRPS (AIFS-ENS recipe) | task ≠ training method: `EnsembleTraining`, noise-conditioned model, CRPS | ★★ | ~6 min |
-| B1 | [Italy LAM](B1_lam/) | a limited-area model over Italy nested in global ERA5 | `cutout`, LAM graph, output mask | ★★★ | **not available yet** (data pending) |
+| **B1** | [Italy LAM](B1_lam/) | a regional model over Italy (CERRA, 22 km) with a ring of global ERA5 as boundary | dataset `cutout`, limited-area graph, output mask / LAM loss | ★★★ | ~6 min |
 
-Every option uses the 10-day O96 ERA5 sample from hour 1 (29 training and 6 validation samples): we watch
-the loss go down, we do not build a useful forecast model. **Not sure? Take A** and agree with your neighbours
+Every option uses the 10-day O96 ERA5 sample from hour 1 (29 training and 6 validation samples); B1 adds the
+same 10 days of CERRA over Italy. We watch the loss go down, we do not build a useful forecast model. **Not sure? Take A** and agree with your neighbours
 on who runs which processor, so the room covers all four. **0** is also the fallback if anything goes wrong.
 
 Reference GPU dry runs (1 × A100, `boost_qos_dbg`, 8 cores; the solution configs as shipped):
@@ -21,11 +21,14 @@ Reference GPU dry runs (1 × A100, `boost_qos_dbg`, 8 cores; the solution config
 | 0 solution (GNN, 20 outputs, rollout 2) | 62116752 | 6 min 07 s | 4 min 46 s | 500 | 8.7 | 2.3 GiB | 0.105 → 0.059 | 0.101 → 0.071 |
 | A solution (GraphTransformer, triton) | 62116755 | 6 min 16 s | 4 min 53 s | 500 | 9.5 | 2.3 GiB | 0.145 → 0.035 | 0.073 → 0.039 |
 | C solution (GT-ens, 4 members, afCRPS) | 62117462 | 6 min 04 s | 4 min 41 s | 400 | 9.2 | 4.7 GiB | 0.295 → 0.097 | 0.204 → 0.106 |
+| B1 solution (LAM, GT, thinning 4, hidden r7) | 62127960 | 5 min 59 s | 5 min 07 s | 500 | 15.9 | 1.9 GiB | 0.510 → 0.122 | 0.141 → 0.124 |
 
 "Startup" is everything before the first logged step: Python imports from the shared filesystem
 (about 3–4 min), config, data, graph and model setup. **Training itself takes about a minute.**
 At this size the 4 ensemble members of C cost almost nothing extra per training step (9.2 it/s, like A);
-they double the GPU memory, and C's validation passes are slower.
+they double the GPU memory, and C's validation passes are slower. B1 is the smallest model (0.57 M parameters,
+3948 points, 5 outputs), so its steps are the fastest; its loss is an MSE over Italy only, not comparable with
+the others.
 
 Not GPU-tested yet: A's `variants/transformer.yaml` and `variants/point_wise.yaml` (both train on CPU; budget
 kept the GPU dry runs to one per option). In the runs above the graph file already existed; a student's first
@@ -100,7 +103,7 @@ budget is shared by everybody, so submit one job, look at it, then decide on the
 | the job stays `PD` | the debug queue is busy | wait; don't submit duplicates |
 
 Run names: put your name in them (`--name A-gt-$USER`) so the room can tell runs apart on the scoreboard.
-`diagnostics.log.mlflow.experiment_name` (`hour2-0`, `hour2-A`, `hour2-C`) is the option label on the
+`diagnostics.log.mlflow.experiment_name` (`hour2-0`, `hour2-A`, `hour2-C`, `hour2-B1`) is the option label on the
 scoreboard: leave it as it is.
 
 ## Files
@@ -112,7 +115,7 @@ exercises/
   0_make_it_yours/           README, skeleton.yaml, solution.yaml
   A_processor_zoo/           README, skeleton.yaml, solution.yaml (GraphTransformer), variants/{gnn,transformer,point_wise}.yaml
   C_ensemble_crps/           README, skeleton.yaml, solution.yaml
-  B1_lam/                    README only (pending data)
+  B1_lam/                    README, skeleton.yaml, solution.yaml, lam_graph.png/.svg (map of the LAM graph)
 scripts/
   submit.sh                  submit any config:  scripts/submit.sh <config.yaml> [--name N] [overrides]
   train.sbatch               the generic 1-GPU job behind submit.sh
@@ -120,6 +123,9 @@ scripts/
   scoreboard.py              add / show / init the shared scoreboard
   check_exercises.py         instructor: validate (and CPU-smoke-train) many configs in one process
   make_compare_notebook.py   instructor: regenerates compare.ipynb
+  crop_cerra.py              instructor: cuts the Italy window out of the CERRA sample (B1 data)
+  plot_lam_graph.py          map of a B1 graph (exercises/B1_lam/lam_graph.png)
+  download_data.sh           instructor: all sample data (O96, CERRA, ...) into $WORK/a08trd25/data
 ```
 
 Every config is **standalone**: it lists all its settings instead of building on

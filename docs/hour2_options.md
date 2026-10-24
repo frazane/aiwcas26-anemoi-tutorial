@@ -16,7 +16,7 @@ session, run each solution config once on a GPU. Section 6 gives a checklist.
 | Rank | Option | Anemoi concept | Difficulty | Data | Supported in pinned version | Loss visibly drops in ≤5 min? | Prep effort |
 |---|---|---|---|---|---|---|---|
 | 1 | **A. Processor zoo** (GNN / GraphTransformer / Transformer / point-wise MLP) | model = config: same data and graph, swap the processor | Easy | O96 sample (already downloaded) | Yes. GNN and GT are CI-tested (`IT/conftest.py` `global_config` params). Transformer config exists (`CFG/model/transformer.yaml`), but this env has no flash-attn, so it needs SDPA | Yes, same as base | Low |
-| 2 | **B. Italy LAM / stretched grid** (CERRA 5.5 km cut into global ERA5 O96) | `cutout`, LAM graph, output mask, boundary forcing; or stretched mesh + loss re-weighting | Medium–hard | CERRA test sample (public, ~1 GB tgz, **not downloaded yet**) + O96 | Yes. Both are CI-tested: `IT/config/test_lam.yaml` and `test_stretched.yaml` use exactly this data pair | Probably (few variables, small model); data I/O is the unknown | Medium: download, decide the Italy crop, dry run |
+| 2 | **B. Italy LAM / stretched grid** (CERRA 5.5 km cut into global ERA5 O96) | `cutout`, LAM graph, output mask, boundary forcing; or stretched mesh + loss re-weighting | Medium–hard | CERRA test sample (public, ~1 GB tgz; downloaded, plus an Italy crop for B1, see below) + O96 | Yes. Both are CI-tested: `IT/config/test_lam.yaml` and `test_stretched.yaml` use exactly this data pair | Probably (few variables, small model); data I/O is the unknown | Medium: download, decide the Italy crop, dry run |
 | 3 | **C. Ensemble CRPS** (AIFS-ENS style) | training method ≠ task: `EnsembleTraining` + afCRPS + noise-conditioned model | Medium | O96 sample | Yes. CI-tested: `IT/config/test_ensemble_crps.yaml` on O96 | Yes (CRPS on 4 members, small model) | Low–medium (disable torch.compile, pick the attention backend) |
 | 4 | **D. Temporal interpolator** (12 h → 6 h) | tasks: `TemporalDownscaler` replaces `Forecaster` | Easy–medium | O96 sample | Task exists (`src/anemoi/training/tasks/temporal_downscaler.py`). CI only tests it on a *forecast-trajectory* dataset, not on analyses → **needs a dry run** | Yes, and it ends lower than the forecaster (useful contrast) | Low |
 | 5 | **E. Diffusion (EDM)** | `TransportTraining`, probabilistic generative forecaster | Hard | O96 sample | Yes. CI-tested: `test_training_cycle_edm_transport`, `IT/config/test_transport.yaml`. New code path ("transport" refactor), docs and config disagree on key names | Noisy but trending down; needs a smoothed curve | Medium |
@@ -85,9 +85,9 @@ session, run each solution config once on a GPU. Section 6 gives a checklist.
   - Grid 1069×1069 (1.14 M points), **same 39 dates as the O96 sample**: this is the only public pair with matching dates. The O48 and keisler samples are from 1979.
   - Variables: `msl, sp, t_50, t_100, r_50, r_100, sf, tp` + forcings. With `adjust: all`, the common set with ERA5 is `msl, sp, t_50, t_100` (prognostic), `tp` (diagnostic) and the cos/sin forcings.
   - **Prep (instructor, ~2–3 h).**
-    1. Add the tgz to the download script.
-    2. Pick the crop and resolution on the login node with `open_dataset` (cheap): e.g. `{dataset: cerra, area: [48, 5, 35, 20], thinning: N}`. Whether `area` and `thinning` combine on CERRA's 2-D Lambert grid is **unverified**; fallback: CI's `thinning: 25` over the full CERRA domain, ~43×43 points.
-    3. Optionally pre-build the graph.
+    1. Add the tgz to the download script. **Done** (`scripts/download_data.sh`, 1.2 GB unpacked in `$WORK/a08trd25/data/anemoi/`).
+    2. Pick the crop and resolution on the login node with `open_dataset`. **Done:** `area` and `thinning` combine fine (anemoi-datasets applies `thinning` first, then `area`). `{area: [48, 5, 35, 20], thinning: 4}` gives 3812 CERRA points (22 km); with `max_distance_km: 300` the cutout keeps 136 O96 boundary points (3948 in total). For comparison, CI's `thinning: 25` gives 1849 + 505.
+    3. Optionally pre-build the graph. Not needed: the B1 graph (`LimitedAreaTriNodes` r7, 410 hidden nodes) builds in ~10 s, so each student builds and caches their own.
 - **Config delta (TODOs).**
   - `defaults:` `graph: limited_area` + `training: lam` + `model: graphtransformer`, or `graph: stretched_grid` + `training: stretched`.
   - `dataloader.dataset.cutout: [{dataset: <CERRA>, area/thinning: TODO}, {dataset: <O96>}]`, `adjust: all`, `min_distance_km: 0`, `max_distance_km: 300` (B1).
@@ -99,6 +99,7 @@ session, run each solution config once on a GPU. Section 6 gives a checklist.
   - Model side: small (4 prognostic variables, ~10–60 k regional + ≤40 k global points).
   - Unknown: CERRA chunks are a whole 1.14 M-point field per variable and date (`chunks [1,17,1,1142761]`). Each sample decompresses ~230 MB even after cropping. With 6–8 workers that may be 2–5 samples/s, so 300 steps in ~1–3 min. **Measure it.**
   - If too slow, the instructor pre-crops CERRA once into a small anemoi zarr. One way: `anemoi-datasets create` with the `anemoi-dataset` source and an `area`.
+  - **Measured / decided (B1):** on the login node a 3-date sample of the full sample took 13–22 s (mostly slow first-touch memory on the login node, not I/O). To remove the risk, `scripts/crop_cerra.py` writes a 322 × 294 grid-index window around Italy (native 5.5 km, 96 MB). It keeps the 2-D grid, so students still choose `area`/`thinning`, and a sample reads in ~0.02 s. `anemoi-datasets create` + `area` was not used, because it would flatten the grid and `thinning` would then fail.
 - **Risks.**
   - Most moving parts on the menu: two datasets, masks, a variable mismatch, graph resolution confusion with the base.
   - LAM graph building with cut-off edges on many points. torch-cluster is **not installed**, which the log warns about: graph building runs on the GPU node's CPU (8 cores). Pre-build the graphs, or cap the point count.
@@ -218,7 +219,7 @@ Minimal viable menu: **A, C, B1** (+0). Together they cover architecture, probab
 ## 7. Main uncertainties
 
 - No GPU timings yet. Data-loader throughput for CERRA (B, F) is the biggest unknown.
-- Whether `area` + `thinning` on CERRA's 2-D Lambert grid behaves (B). Fallback: `thinning` only, as in CI.
+- ~~Whether `area` + `thinning` on CERRA's 2-D Lambert grid behaves (B).~~ It does (B1 uses `area: [48, 5, 35, 20], thinning: 4`). CERRA I/O is handled by a pre-cropped window (`scripts/crop_cerra.py`).
 - `TemporalDownscaler` on an analysis dataset with the plain dataloader is not covered by CI (D).
 - Triton graph-attention JIT and Inductor on Leonardo compute nodes (A-GT, C, E, F). Mitigation: `compile: null`, `graph_attention_backend: pyg`.
 - GPU availability in `boost_qos_dbg` for ~25 simultaneous jobs: ask for a reservation.

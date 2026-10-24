@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Instructor prep for notebooks/01_datasets.ipynb (AIWCAS 2026 Anemoi tutorial)
+# Instructor prep for notebooks/01_datasets.ipynb and hour-2 option B1
+# (AIWCAS 2026 Anemoi tutorial)
 #
 # Downloads small, public anemoi-format sample datasets from the ECMWF object
 # store (the same bucket anemoi uses for its own tests and demos), and the
 # Natural Earth coastlines cartopy needs, so the notebook runs fully offline
 # (e.g. on compute nodes without internet).
 #
-# Run on a LOGIN node (needs internet). Total: ~560 MB.
+# Run on a LOGIN node (needs internet). Total: ~560 MB, plus the CERRA sample
+# for option B1 (987 MB download, 1.1 GB unpacked). Skip CERRA with CERRA=0.
+# Re-running skips everything that is already complete.
 #
 #   module load python/3.11.7
 #   source $SCRATCH/envs/anemoi/bin/activate
@@ -79,6 +82,40 @@ with ThreadPoolExecutor(16) as pool:
 print(f"       {len(keys)} objects")
 EOF
   touch "$DATA_DIR/anemoi/$name/.download-complete"
+done
+
+# Archives (.tgz of a whole zarr): fetched with curl (resumable), unpacked into a
+# fresh staging directory, then moved into place. The tgz is deleted afterwards.
+ARCHIVES=()
+if [[ "${CERRA:-1}" != 0 ]]; then
+  ARCHIVES+=(
+    # CERRA regional reanalysis, 5.5 km Lambert-conformal grid over Europe (1069 x 1069 =
+    # 1,142,761 points), 6-hourly, the SAME 39 dates as the O96 sample (2017-01-01T06..01-10T18),
+    # 17 variables (msl, sp, t/r at 50 and 100 hPa, tp, sf + forcings). CC-BY-4.0. 987 MB tgz.
+    # Used by hour-2 option B1 (Italy LAM, cut out into the O96 sample).
+    "test-data/samples/anemoi-integration-tests/training/datasets/cerra-rr-an-oper-0001-mars-5p5km-2017-2017-6h-v3-testing.zarr"
+  )
+fi
+
+for ds in ${ARCHIVES[@]+"${ARCHIVES[@]}"}; do
+  name="$(basename "$ds")"
+  dest="$DATA_DIR/anemoi/$name"
+  if [[ -f "$dest/.download-complete" ]]; then
+    echo "[skip] $name (already downloaded)"
+    continue
+  fi
+  echo "[get ] $name.tgz"
+  tgz="$DATA_DIR/anemoi/.$name.tgz"
+  curl -fL --retry 5 --retry-delay 10 -C - -o "$tgz" "$BUCKET/$ds.tgz"
+  stage="$(mktemp -d "$DATA_DIR/anemoi/.unpack-XXXXXX")"
+  tar -xzf "$tgz" -C "$stage" --no-same-owner --no-same-permissions
+  src="$(find "$stage" -maxdepth 2 -type d -name "$name" | head -1)"
+  [[ -n "$src" ]] || { echo "error: $name not found inside $tgz" >&2; exit 1; }
+  rm -rf "$dest"
+  mv "$src" "$dest"
+  rm -rf "$stage" "$tgz"
+  chmod -R u+rwX,go+rX "$dest"   # readable by the group (and others), like the rest of the data
+  touch "$dest/.download-complete"
 done
 
 # Natural Earth coastlines/borders for cartopy (so plotting works offline).
