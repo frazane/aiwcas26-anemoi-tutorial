@@ -25,7 +25,7 @@ Reference GPU dry runs (1 × A100, `boost_qos_dbg`, 8 cores; the solution config
 
 "Startup" is everything before the first logged step: Python imports, config, data, graph and model setup.
 These runs used the old per-user venv, where imports alone took 3–4 min. Jobs now mount the shared env
-from a squashfs image, and startup drops to about 20–50 s (0 solution: 21 s, job 62141053), so expect
+from a squashfs image, and startup drops to about 20–50 s (0 solution: 21 s, job 62141053; the whole 0-solution job through `aiwcas train` took 1 min 26 s, job 62150517), so expect
 **~2 min jobs**. **Training itself takes about a minute.**
 At this size the 4 ensemble members of C cost almost nothing extra per training step (9.2 it/s, like A);
 they double the GPU memory, and C's validation passes are slower. B1 is the smallest model (0.57 M parameters,
@@ -38,70 +38,71 @@ run also builds it (a few seconds for these small graphs).
 
 ## Steps (the same for every option)
 
-All commands run from the repository root, **on the login node**.
+All commands run from the repository root, **on the login node**, in a terminal where you ran `source setup.sh`
+(see the top-level README; run it again in every new terminal).
 
 ```bash
-# 0. once per terminal
-cd ~/aiwcas26-anemoi-tutorial            # wherever you cloned it
-source /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/activate   # shared env, see the top-level README
-
 # 1. copy the skeleton of your option (here A); mine*.yaml is git-ignored
 cp exercises/A_processor_zoo/skeleton.yaml exercises/A_processor_zoo/mine.yaml
 
 # 2. fill the TODOs: every ??? in mine.yaml (the comments next to each one tell you what to put)
 
-# 3. validate (5–25 s). Repeat until it ends with "Config files validated."
-anemoi-training config validate --config-path exercises/A_processor_zoo --config-name mine
+# 3. check it (5-20 s). Repeat until it says OK; it lists every ??? that is left
+aiwcas validate exercises/A_processor_zoo/mine.yaml
 
-# 4. submit one 1-GPU job (10 min limit, debug queue)
-scripts/submit.sh exercises/A_processor_zoo/mine.yaml
-#    optional: a run name and Hydra overrides on the command line
-scripts/submit.sh exercises/A_processor_zoo/mine.yaml --name A-gt-128-$USER model.num_channels=128
+# 4. train it: one 1-GPU job (10 min limit, debug queue). Put your name in the run name
+aiwcas train exercises/A_processor_zoo/mine.yaml --name A-gt-$USER
+#    optional: Hydra overrides on the command line win over the file
+aiwcas train exercises/A_processor_zoo/mine.yaml --name A-gt-128-$USER model.num_channels=128
 
-# 5. monitor: PD = waiting for a GPU, R = running
-squeue --me
-tail -f $SCRATCH/aiwcas26/logs/h2-A-mine-<jobid>.out    # submit.sh prints the exact path
-#    about 20–50 s of silence (imports and setup), then a progress bar with train_multi_dataset_loss_step=...
+# 5. watch it: waits while the job is PENDING (waiting for a GPU), then follows the log
+aiwcas log
+#    about 20-50 s of silence (imports and setup), then a progress bar with train_multi_dataset_loss_step=...
+#    Ctrl-C stops watching, not the job. `aiwcas status` lists your jobs.
 
-# 6. plot your loss when the job is done (writes a PNG; open it in JupyterLab's file browser)
-python scripts/plot_loss.py --job <jobid>
+# 6. your loss curve, when the job is done (writes a PNG and opens it in VS Code)
+aiwcas plot
 
-# 7. compare with the room: open exercises/compare.ipynb in JupyterLab and Run All
-python scripts/scoreboard.py show            # or just the table, in the terminal
+# 7. compare with the room: open exercises/compare.ipynb and Run All, or just the table:
+aiwcas scoreboard
 ```
 
-`scripts/submit.sh` refuses configs that still contain `???`. It passes the config as an absolute path,
-sends the log to `$SCRATCH/aiwcas26/logs/`, and runs `scripts/train.sbatch`. When the job finishes, that
-script adds one row for your run to the room's scoreboard (`/leonardo_work/tra26_aiwcas/aiwcas26_scoreboard/`).
-Your outputs (checkpoints, MLflow files, Hydra logs) go to `$SCRATCH/aiwcas26/hour2/<option>/`. The graph is
-built on your first run and cached in `$SCRATCH/aiwcas26/hour2/graphs/`.
+`aiwcas train` validates the config first (the same checks as `aiwcas validate`), then submits it with
+`scripts/submit.sh`, which passes the config to `anemoi-training train` as an absolute path, sends the log to
+`$SCRATCH/aiwcas26/logs/`, and runs `scripts/train.sbatch`. When the job finishes, that script adds one row for your
+run to the room's scoreboard (`/leonardo_work/tra26_aiwcas/aiwcas26_scoreboard/`). Your outputs (checkpoints,
+MLflow files, Hydra logs) go to `$SCRATCH/aiwcas26/hour2/<option>/`. The graph is built on your first run and
+cached in `$SCRATCH/aiwcas26/hour2/graphs/`. `aiwcas log <jobid>` and `aiwcas plot <jobid>` work on older jobs.
 
 Rules of the queue: at most **2 running / 4 submitted jobs per person** in `boost_qos_dbg`, and the project
-budget is shared by everybody, so submit one job, look at it, then decide on the next. Do **not** run
+budget is shared by everybody, so submit one job, look at it, then decide on the next (`aiwcas cancel <jobid>`
+stops a job you no longer want). Do **not** run
 `anemoi-training train` on the login node: processes there are killed after 10 min of CPU time.
 
 ## When something goes wrong
 
 | you see | it means | do |
 |---|---|---|
-| `You must specify 'model', e.g, model=<OPTION>` | a `???` in the `defaults:` list | pick one of the listed options |
-| `Missing mandatory value: task.multistep_input` | a `???` left in the file | fill it (validation reports one at a time) |
+| `NOT OK ... still has N unfilled TODO(s) (???)` | `aiwcas validate` / `train` found `???` left in the file | fill the listed lines (each shows its hint) |
+| `You must specify 'model', e.g, model=<OPTION>` | a `???` in the `defaults:` list (only if you run `anemoi-training` by hand) | pick one of the listed options |
 | `Extra field 'num_heads' is not allowed` (or similar) | a key the chosen component does not have (e.g. `num_heads` on a GNN) | remove it, or pick the right recipe block |
 | a validation error on `training.precision` | `precision: 32` is not valid | use `32-true`, `16-mixed` or `bf16-mixed` |
-| `Primary config module ... not found` | `anemoi-training train` got a relative `--config-path` | use `scripts/submit.sh` (it makes the path absolute) |
-| MLflow says the file store is "in maintenance mode" | `MLFLOW_ALLOW_FILE_STORE` not set | use `scripts/submit.sh` / `train.sbatch` (they set it) |
+| `Primary config module ... not found` | `anemoi-training train` got a relative `--config-path` | use `aiwcas train` (it makes the path absolute) |
+| MLflow says the file store is "in maintenance mode" | `MLFLOW_ALLOW_FILE_STORE` not set | use `aiwcas train` (the job sets it); in a terminal, `source setup.sh` |
 | `AssertionError: Edge attributes must be provided` | Transformer processor with a graph that has hidden→hidden edges | use the encoder/decoder-only graph and **its own file name** (A, TODO 3) |
 | you changed the `graph:` section but nothing changed | the cached graph file was reused (`graph.overwrite: False`) | give the graph a new file name (or delete the old file) |
-| `AssertionError: Data indexing has invalid entries ['lsm'], not in dataset` (in the job, after startup) | option 0: a forcing or diagnostic listed in `data/zarr.yaml` is missing from your `select:`. `validate` does **not** catch this | keep the 13 forcings and `tp`, `cp` |
+| `'lsm' is listed in data.datasets.data.forcing, but select: ... does not keep it` (`aiwcas validate`), or `AssertionError: Data indexing has invalid entries ['lsm']` in a job | option 0: a forcing or diagnostic listed in `data/zarr.yaml` is missing from your `select:` (`anemoi-training config validate` does not catch this; `aiwcas validate` does) | keep the 13 forcings and `tp`, `cp` |
+| `data.datasets.data.diagnostic lists cp, which the dataset does not have` | option B1: an ERA5-only variable in the `forcing`/`diagnostic` lists of the CERRA cutout | use only the 13 shared variables (B1, TODO 5) |
 | `found duplicate key processor` | option A: you pasted a recipe *under* `model:` instead of replacing the section | replace the whole `model:` section with the recipe |
 | `num_channels Field required` / `trainable_size Extra inputs` for `PointWise...` | option A point-wise built from the packaged `model/point_wise.yaml`, which is broken in this version | use `variants/point_wise.yaml` as is |
 | an error mentioning `triton` | the GPU kernel of the graph transformer failed to compile | `graph_attention_backend: pyg` in the processor and both mappers |
 | `flash_attn` not found | Transformer default attention | `attention_implementation: scaled_dot_product_attention` |
 | the job sits for minutes on `torch.compile` / inductor | compilation is on | `model.compile: null` |
-| `DUE TO TIME LIMIT` in the log | 10 min were not enough (startup is usually under 1 min) | fewer `training.max_steps`, fewer members (C), or a smaller rollout |
+| `DUE TO TIME LIMIT` in the log | 10 min were not enough (startup is usually under 1 min) | fewer `training.max_steps`, fewer members (C), or a smaller rollout (or `--time 20`, at most 30) |
 | `CUDA out of memory` | too big (unlikely with these sizes) | fewer channels, members or rollout steps |
-| validation is slow (more than ~30 s) | you are not using the shared env (check `which python`) | `source` the shared env as in step 0 |
-| the job stays `PD` | the debug queue is busy | wait; don't submit duplicates |
+| `aiwcas: command not found` | this terminal was not set up | `cd` into the repository and `source setup.sh` |
+| validation is slow (more than ~1 min) | the login node is busy, or you are not using the shared env (check `which python`) | `source setup.sh`; wait |
+| `aiwcas log` says the job is waiting for a GPU (`PENDING` in `aiwcas status`) | the debug queue is busy | wait; don't submit duplicates |
 
 Run names: put your name in them (`--name A-gt-$USER`) so the room can tell runs apart on the scoreboard.
 `diagnostics.log.mlflow.experiment_name` (`hour2-0`, `hour2-A`, `hour2-C`, `hour2-B1`) is the option label on the
@@ -117,11 +118,13 @@ exercises/
   A_processor_zoo/           README, skeleton.yaml, solution.yaml (GraphTransformer), variants/{gnn,transformer,point_wise}.yaml
   C_ensemble_crps/           README, skeleton.yaml, solution.yaml
   B1_lam/                    README, skeleton.yaml, solution.yaml, lam_graph.png (map of the LAM graph)
+bin/aiwcas                   the student command line (`aiwcas help`)
 scripts/
-  submit.sh                  submit any config:  scripts/submit.sh <config.yaml> [--name N] [overrides]
+  validate_config.py         what `aiwcas validate` runs (??? check, schema, variable names)
+  submit.sh                  what `aiwcas train` runs after validating: scripts/submit.sh <config.yaml> [--name N] [--time MIN] [overrides]
   train.sbatch               the generic 1-GPU job behind submit.sh
-  plot_loss.py               loss plot of one of your runs
-  scoreboard.py              add / show / init the shared scoreboard
+  plot_loss.py               what `aiwcas plot` runs: loss plot of one of your runs
+  scoreboard.py              add / show / init the shared scoreboard (`aiwcas scoreboard` = show)
   check_exercises.py         instructor: validate (and CPU-smoke-train) many configs in one process
   make_compare_notebook.py   instructor: regenerates compare.ipynb
   crop_cerra.py              instructor: cuts the Italy window out of the CERRA sample (B1 data)

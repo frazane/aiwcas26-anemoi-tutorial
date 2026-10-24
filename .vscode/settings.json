@@ -1,0 +1,23 @@
+{
+    // AIWCAS 2026 Anemoi tutorial: the shared environment (see setup.sh) for scripts, terminals and notebooks.
+    "python.defaultInterpreterPath": "/leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/python",
+    "python.terminal.activateEnvironment": true,
+    // `aiwcas` works in every VS Code terminal, even before `source setup.sh`
+    "terminal.integrated.env.linux": {
+        "PATH": "${workspaceFolder}/bin:${env:PATH}"
+    },
+    // Notebooks name the kernel "aiwcas26-anemoi" (registered by setup.sh); run them from their own folder
+    "jupyter.notebookFileRoot": "${fileDirname}",
+    "jupyter.kernels.excludePythonEnvironments": [
+        "/usr/bin/python3",
+        "/bin/python3"
+    ],
+    // Do not index the submodules and the big data dirs
+    "files.watcherExclude": {
+        "**/src/**": true,
+        "**/.git/objects/**": true
+    },
+    "search.exclude": {
+        "src/": true
+    }
+}

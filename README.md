@@ -1,71 +1,111 @@
 # AIWCAS 2026 Anemoi tutorial
 
-Hands-on tutorial on [Anemoi](https://anemoi.readthedocs.io), ECMWF's machine-learning weather framework, for the [AIWCAS 2026](https://dsip.fbk.eu/events/aiwcas2026/) event. It runs on the Leonardo HPC (CINECA) and uses the Anemoi packages (`anemoi-datasets`, `anemoi-graphs`, `anemoi-models`, `anemoi-training`) as pinned git submodules.
+Hands-on tutorial on [Anemoi](https://anemoi.readthedocs.io), ECMWF's machine-learning weather framework, for the [AIWCAS 2026](https://dsip.fbk.eu/events/aiwcas2026/) event. It runs on the Leonardo HPC (CINECA) and uses the Anemoi packages (`anemoi-datasets`, `anemoi-graphs`, `anemoi-models`, `anemoi-training`).
 
-## Getting the code
+## Getting started
+
+In a terminal on a Leonardo login node (`ssh <username>@login.leonardo.cineca.it`, or a VS Code Remote-SSH terminal):
 
 ```bash
 git clone --recurse-submodules https://github.com/frazane/aiwcas26-anemoi-tutorial.git
 cd aiwcas26-anemoi-tutorial
+source setup.sh
 ```
 
-If you forgot the flag:
+`setup.sh` checks your account, activates the tutorial's Python environment (everything is pre-installed:
+nothing to install) and ends with **"You're ready"**. If it prints a line starting with `!!`, do what that line
+says and run `source setup.sh` again. In every **new terminal**, `cd` into the repository and run
+`source setup.sh` again (it is quick and safe to repeat).
 
-```bash
-git submodule update --init
-```
+**Hour 1: the notebooks.** Open the repository folder in VS Code (*Remote - SSH* to `login.leonardo.cineca.it`,
+then *File → Open Folder...*), install the *Python* and *Jupyter* extensions when VS Code offers them, and open
+`notebooks/01_datasets.ipynb`. The kernel **Python (aiwcas26 anemoi)** is selected automatically (if VS Code asks,
+pick it under *Select Kernel → Jupyter Kernel...*).
+
+**Hour 2: train your own model.** Start at [`exercises/README.md`](exercises/README.md). Everything you run there
+goes through one command, `aiwcas`:
+
+| command | what it does |
+|---|---|
+| `aiwcas validate <config.yaml>` | checks a config in 5–20 s: unfilled `???`, the anemoi schema, and variable names |
+| `aiwcas train <config.yaml> [--name N]` | validates, then trains it on one GPU (a Slurm job of a few minutes) |
+| `aiwcas status` | your jobs: waiting for a GPU, running, finished |
+| `aiwcas log [jobid]` | follows the log of your latest job (Ctrl-C stops watching, not the job) |
+| `aiwcas plot [jobid]` | the loss curve of your latest job |
+| `aiwcas scoreboard` | everybody's results; `exercises/compare.ipynb` plots them |
+| `aiwcas help` | all commands, with examples |
+
+Two things to know about Leonardo: notebooks run on the shared **login node**, which stops any process (a
+notebook kernel too) after 10 minutes of CPU time, so restart the kernel if it dies; and **training runs on the GPU
+nodes**, through `aiwcas train`, never on the login node.
 
 ## Layout
 
 ```
 README.md       this file
+setup.sh        `source setup.sh`: sets up a terminal (environment, `aiwcas` command, Jupyter kernel, checks)
+bin/aiwcas      the student command line (validate / train / status / log / plot / scoreboard / check)
 AGENTS.md       rules and gotchas for coding agents
-notebooks/      tutorial notebooks
+notebooks/      tutorial notebooks (hour 1)
 exercises/      hour 2: "pick your setup" menu (skeleton + solution configs, compare.ipynb); start at exercises/README.md
 configs/        configs used by the notebooks (e.g. 04_tiny_train.yaml)
-scripts/        helper scripts (Slurm smoke test, submit.sh / train.sbatch for any config, scoreboard,
-                build_shared_env.sh + anemoi_env.sh for the shared environment)
+scripts/        what `aiwcas` runs (submit.sh / train.sbatch, validate_config.py, plot_loss.py, scoreboard.py,
+                smoke_test_gpu.sbatch) and instructor tools (build_shared_env.sh + anemoi_env.sh, ...)
 env/            requirements.in / requirements.txt (hashed lock) of the shared environment
+.vscode/        workspace settings: the shared interpreter, `aiwcas` on the terminal PATH
 src/
   anemoi-core/      submodule, monorepo (graphs, models, training), tag training-0.17.1
   anemoi-datasets/  submodule, tag 0.5.47
 ```
 
-## Setting up the environment
+## For instructors and advanced users
 
-### Students: use the shared environment
+Students do not need anything below.
 
-Everything is pre-installed in one shared, read-only environment (group `tra26_aiwcas`). In every terminal:
+### What `setup.sh` sets up
 
-```bash
-source /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/activate
-```
+`source setup.sh [-q]` (bash only; it refuses to run when executed instead of sourced and never exits your shell):
 
-No `module load` and no installing. It contains Python 3.11.7 (the `python/3.11.7` module's interpreter), torch 2.10.0+cu126, torchvision, the released `anemoi-datasets 0.5.47`, `anemoi-graphs 0.9.8` (with `trimesh`), `anemoi-models 0.19.0`, `anemoi-training 0.17.1` (the versions the `src/` submodules are pinned to), `datashader`, and JupyterLab, matplotlib, cartopy and plotly for the notebooks. The exact versions are in [`env/requirements.txt`](env/requirements.txt).
+- **checks**, each with a fix when it fails: on a login node, `$SCRATCH` set, member of group `tra26_aiwcas`, the
+  shared env readable and its Python 3.11.7 (the `python/3.11.7` module's interpreter) starting, the tutorial data
+  readable; it also fetches the git submodules if the clone has none;
+- **activates** the shared env (the plain venv: on the login node there is no image to mount) and puts `bin/` on `PATH`;
+- **registers** the Jupyter kernel `aiwcas26-anemoi` ("Python (aiwcas26 anemoi)") in `~/.local/share/jupyter/kernels/`,
+  rewriting it only when it changed; the kernel gets `AIWCAS_DATA`, `AIWCAS_WORKDIR` and the MLflow variables below in its environment;
+- **creates** `$SCRATCH/aiwcas26/{logs,training,graphs,hour2/graphs}`;
+- **exports** the paths of the tutorial. They are defined in `setup.sh` only (change them there), and an existing
+  value in the environment wins:
+
+| variable | default | used by |
+|---|---|---|
+| `AIWCAS_REPO` | the clone `setup.sh` is in | `aiwcas` |
+| `AIWCAS_ENV` | `/leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi` (or `$ANEMOI_VENV`) | activation, kernel, `ANEMOI_VENV` for jobs |
+| `AIWCAS_DATA` | `/leonardo_work/tra26_aiwcas/a08trd25/data` (`anemoi/` zarr stores, `cartopy/` shapefiles) | data check; configs can read it as `${oc.env:AIWCAS_DATA}`, notebooks as `os.environ["AIWCAS_DATA"]` |
+| `AIWCAS_WORKDIR`, `AIWCAS_LOGS` | `$SCRATCH/aiwcas26`, `$SCRATCH/aiwcas26/logs` | Slurm logs, loss plots |
+| `MLFLOW_ALLOW_FILE_STORE`, `MLFLOW_DISABLE_AGENT_HINT` | `true`, `1` | offline MLflow in notebooks |
+
+Jobs inherit all of them (`scripts/submit.sh` uses `sbatch --export=ALL`). `bin/aiwcas` sources `setup.sh -q` itself
+when the terminal was not set up, so it also works from the VS Code terminal (whose `PATH` includes `bin/`, see
+`.vscode/settings.json`). The configs and notebooks still spell the data path out; moving the data means changing
+`AIWCAS_DATA` and replacing `/leonardo_work/tra26_aiwcas/a08trd25/data` by `${oc.env:AIWCAS_DATA}` in the configs and
+by `os.environ["AIWCAS_DATA"]` in the notebooks.
+
+To set up every terminal automatically, a student can add `source <clone>/setup.sh -q` to `~/.bashrc` (`setup.sh`
+prints the exact line; it never edits `~/.bashrc` itself).
+
+### The shared environment
+
+Everything is pre-installed in one shared, read-only environment (group `tra26_aiwcas`). It contains Python 3.11.7 (the `python/3.11.7` module's interpreter), torch 2.10.0+cu126, torchvision, the released `anemoi-datasets 0.5.47`, `anemoi-graphs 0.9.8` (with `trimesh`), `anemoi-models 0.19.0`, `anemoi-training 0.17.1` (the versions the `src/` submodules are pinned to), `datashader`, and JupyterLab, matplotlib, cartopy and plotly for the notebooks. The exact versions are in [`env/requirements.txt`](env/requirements.txt). Without `setup.sh`: `source /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/activate`.
 
 The Slurm scripts (`scripts/submit.sh`, `scripts/train.sbatch`, `scripts/smoke_test_gpu.sbatch`, `scripts/train_tiny.sbatch`) use the same environment by themselves, so there is nothing to activate for them (see [How jobs use the environment](#how-jobs-use-the-environment)).
 
-### Notebooks: VS Code or JupyterLab
+### JupyterLab in the browser
 
-CINECA has no Jupyter service for Leonardo (its [interactive computing service](https://docs.hpc.cineca.it/services/interactive_computing.html) is Galileo100 only), so notebooks run on a **login node**. Login nodes kill any process after 10 min of CPU time, kernels included: restart the kernel if it dies, and leave training to the Slurm jobs.
+CINECA has no Jupyter service for Leonardo (its [interactive computing service](https://docs.hpc.cineca.it/services/interactive_computing.html) is Galileo100 only), so notebooks run on a **login node**, in VS Code (above) or JupyterLab.
 
-Register the shared environment as a Jupyter kernel once (it is written to `~/.local/share/jupyter/kernels/`):
-
-```bash
-/leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/python -m ipykernel install --user \
-    --name aiwcas26-anemoi --display-name "Python (aiwcas26 anemoi)"
-```
-
-**VS Code (recommended).** Connect with the *Remote - SSH* extension to `login.leonardo.cineca.it` (with your usual 2FA SSH certificate) and open your clone of this repository. Install the *Python* and *Jupyter* extensions on the remote side when VS Code offers it. Then:
-
-- for notebooks, open an `.ipynb`, click *Select Kernel* (top right), then *Jupyter Kernel...* → **Python (aiwcas26 anemoi)**. Alternatively, choose *Python Environments...* → *Enter interpreter path*, as below;
-- for scripts and the terminal, run *Python: Select Interpreter* → *Enter interpreter path...* and give
-  `/leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/python`.
-
-**JupyterLab in the browser.** On the login node, pick a free port, note which login node you are on, and start JupyterLab:
+If you prefer JupyterLab to VS Code: in a terminal where you ran `source setup.sh`, pick a free port, note which login node you are on, and start JupyterLab:
 
 ```bash
-source /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/activate
 hostname                                    # e.g. login07.leonardo.local
 jupyter lab --no-browser --port=8$((RANDOM % 900 + 100))    # prints a URL with a token
 ```
@@ -76,7 +116,7 @@ Then, on your laptop, tunnel to **that** login node: `loginNN.leonardo.local` is
 ssh -N -L <port>:localhost:<port> <username>@login07-ext.leonardo.cineca.it
 ```
 
-Pick the kernel **Python (aiwcas26 anemoi)** (or the default *Python 3*, which is the same environment when JupyterLab was started from it).
+The notebooks select the kernel **Python (aiwcas26 anemoi)** by themselves (the default *Python 3* is the same environment when JupyterLab was started after `source setup.sh`).
 
 ### How jobs use the environment
 
@@ -95,7 +135,7 @@ Knobs (environment variables, passed through by `scripts/submit.sh`):
 | `ANEMOI_VENV` | the shared env | another venv, e.g. `ANEMOI_VENV=$SCRATCH/envs/anemoi scripts/submit.sh ...` (without a `<venv>.sqfs` image next to it, it is used as a plain venv) |
 | `ANEMOI_SQFS` | `<venv>.sqfs` | another image |
 
-### Instructors: building or updating the shared environment
+### Building or updating the shared environment
 
 ```bash
 scripts/build_shared_env.sh --name anemoi-v2 --activate     # on a login node, ~10 min
@@ -132,9 +172,10 @@ Notes:
 - Versions like `anemoi-models 0.19.0.post3` are expected for editable installs (commits since the tag in the monorepo).
 - Importing anemoi from a Lustre venv is slow (30 s to several minutes on a login node, depending on load).
 
-## GPU smoke test
+### GPU smoke test
 
 Checks that the environment sees a GPU and that torch, torch-geometric and all Anemoi packages import and run.
+`aiwcas check` submits it (log in `$SCRATCH/aiwcas26/logs/`) and follows the log. By hand:
 
 ```bash
 sbatch scripts/smoke_test_gpu.sbatch
@@ -143,7 +184,7 @@ ANEMOI_ENV_MODE=venv sbatch scripts/smoke_test_gpu.sbatch
 ANEMOI_VENV=/path/to/venv sbatch scripts/smoke_test_gpu.sbatch
 ```
 
-It uses account `tra26_aiwcas`, partition `boost_usr_prod`, the debug QOS `boost_qos_dbg`, 1 GPU and 8 cores. Output goes to `anemoi-smoke-<jobid>.out` in the directory you submitted from; a successful run ends with `SMOKE TEST PASSED`. With the shared env it takes about 15 s of wall time (job 62147541: 11 s, imports 6.4 s from the squashfs), plus queueing: Booster is often nearly full. The GPU driver is 535 (CUDA 12.2 natively); the cu126 wheels work through CUDA minor-version compatibility.
+It uses account `tra26_aiwcas`, partition `boost_usr_prod`, the debug QOS `boost_qos_dbg`, 1 GPU and 8 cores. With plain `sbatch`, output goes to `anemoi-smoke-<jobid>.out` in the directory you submitted from; a successful run ends with `SMOKE TEST PASSED`. With the shared env it takes about 15 s of wall time (job 62147541: 11 s, imports 6.4 s from the squashfs), plus queueing: Booster is often nearly full. The GPU driver is 535 (CUDA 12.2 natively); the cu126 wheels work through CUDA minor-version compatibility.
 
 ## Session outline
 

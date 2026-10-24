@@ -12,8 +12,8 @@
 #   TODO(7) the output mask               TODO(8) name your run
 #
 #   cp exercises/B1_lam/skeleton.yaml exercises/B1_lam/mine.yaml   # edit mine.yaml
-#   anemoi-training config validate --config-path exercises/B1_lam --config-name mine
-#   scripts/submit.sh exercises/B1_lam/mine.yaml
+#   aiwcas validate exercises/B1_lam/mine.yaml
+#   aiwcas train exercises/B1_lam/mine.yaml
 #
 # Stuck? solution.yaml is the answer. Upstream recipe:
 # src/anemoi-core/training/src/anemoi/training/config/lam.yaml (+ graph/limited_area.yaml,

@@ -236,7 +236,7 @@ md(r"""
 def main():
     nb = nbf.v4.new_notebook()
     nb.cells = CELLS
-    nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
+    nb.metadata["kernelspec"] = {"name": "aiwcas26-anemoi", "display_name": "Python (aiwcas26 anemoi)", "language": "python"}  # see setup.sh
     out = Path(__file__).resolve().parent.parent / "exercises" / "compare.ipynb"
     nbf.write(nb, out)
     print(f"wrote {out}")

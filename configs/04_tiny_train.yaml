@@ -5,14 +5,16 @@
 # dataset on ONE GPU, in a few minutes, so you can watch the loss go down.
 # It is NOT meant to produce a useful forecast model.
 #
+#   aiwcas validate configs/04_tiny_train.yaml      # after `source setup.sh`
+#   aiwcas train    configs/04_tiny_train.yaml      # 1-GPU Slurm job; then `aiwcas log`, `aiwcas plot`
+# which run, underneath (note: train needs an ABSOLUTE --config-path):
 #   anemoi-training config validate --config-path $PWD/configs --config-name 04_tiny_train
 #   anemoi-training train            --config-path $PWD/configs --config-name 04_tiny_train
-#   # (or: sbatch scripts/train_tiny.sbatch)
 #
 # Everything not set here comes from the packaged defaults listed below; see
 #   anemoi-training config generate -o my_configs/   (copies every default yaml)
 # Command-line overrides win over this file, e.g.
-#   anemoi-training train --config-path $PWD/configs --config-name 04_tiny_train training.max_steps=50 model.num_channels=32
+#   aiwcas train configs/04_tiny_train.yaml training.max_steps=50 model.num_channels=32
 # =============================================================================
 defaults:
   - data: zarr                  # variables: forcing / diagnostic lists, normalisers

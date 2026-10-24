@@ -6,8 +6,8 @@
 # grid point is processed on its own, no spatial interaction at all. Expect it to
 # plateau higher than the others: that is the point ("why message passing matters").
 #
-#   anemoi-training config validate --config-path exercises/A_processor_zoo/variants --config-name point_wise
-#   scripts/submit.sh exercises/A_processor_zoo/variants/point_wise.yaml
+#   aiwcas validate exercises/A_processor_zoo/variants/point_wise.yaml
+#   aiwcas train exercises/A_processor_zoo/variants/point_wise.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================

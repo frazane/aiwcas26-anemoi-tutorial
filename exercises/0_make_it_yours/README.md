@@ -29,7 +29,7 @@ Most of the work on a real forecasting model is not the architecture. It is thes
    * **TODO(4)** rollout: the same value for `start` and `maximum` (1 = no rollout, 2–3 is fine in 10 min).
      Every extra step removes one of the 29 training samples.
    * **TODO(5)** a run name that says what you chose, e.g. `0-sfc-ms1-r2-<you>`.
-2. Validate, submit, plot (see `../README.md`).
+2. `aiwcas validate exercises/0_make_it_yours/mine.yaml` until it says OK, then `aiwcas train exercises/0_make_it_yours/mine.yaml`, `aiwcas log` and `aiwcas plot` (see `../README.md`).
 
 ## Things to try
 

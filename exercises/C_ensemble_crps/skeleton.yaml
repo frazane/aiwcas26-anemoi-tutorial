@@ -12,8 +12,8 @@
 #   TODO(7) name your run
 #
 #   cp exercises/C_ensemble_crps/skeleton.yaml exercises/C_ensemble_crps/mine.yaml   # edit mine.yaml
-#   anemoi-training config validate --config-path exercises/C_ensemble_crps --config-name mine
-#   scripts/submit.sh exercises/C_ensemble_crps/mine.yaml
+#   aiwcas validate exercises/C_ensemble_crps/mine.yaml
+#   aiwcas train exercises/C_ensemble_crps/mine.yaml
 #
 # Stuck? solution.yaml is the answer.
 #

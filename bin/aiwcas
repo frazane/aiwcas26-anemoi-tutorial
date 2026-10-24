@@ -1,0 +1,183 @@
+#!/bin/bash
+# aiwcas: the few commands you need for the AIWCAS 2026 Anemoi tutorial. Run `aiwcas help`.
+# It is a thin wrapper around the scripts in scripts/ (read them if you are curious).
+set -uo pipefail
+
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd -P)"
+# Same paths and environment as `source setup.sh` (also when it was not sourced in this terminal)
+if [[ "${AIWCAS_REPO:-}" != "$REPO" || -z "${AIWCAS_ENV:-}" ]]; then
+    # shellcheck disable=SC1091
+    source "$REPO/setup.sh" -q || { echo "aiwcas: fix the problems above first." >&2; exit 1; }
+fi
+PY="$AIWCAS_ENV/bin/python"
+
+die() { echo "aiwcas: $*" >&2; exit 1; }
+
+usage() {
+    cat <<EOF
+aiwcas: commands for the AIWCAS 2026 Anemoi tutorial (run them on the login node)
+
+  aiwcas validate <config.yaml> [overrides]   check a config (unfilled ???, schema, variables)
+  aiwcas train <config.yaml> [--name N] [--time MIN] [overrides]
+                                              validate, then train it on 1 GPU (Slurm job)
+  aiwcas status                               your jobs: waiting, running, finished
+  aiwcas log [jobid]                          follow the log of your latest (or a given) job
+  aiwcas plot [jobid]                         loss curve of your latest (or a given) job
+  aiwcas scoreboard                           the room's results table
+  aiwcas cancel <jobid>                       stop a job
+  aiwcas check                                GPU smoke test: does the environment see a GPU?
+  aiwcas help                                 this text
+
+Examples (from the repository root):
+  cp exercises/A_processor_zoo/skeleton.yaml exercises/A_processor_zoo/mine.yaml   # then fill the ???
+  aiwcas validate exercises/A_processor_zoo/mine.yaml
+  aiwcas train exercises/A_processor_zoo/mine.yaml --name A-gt-$USER
+  aiwcas train exercises/A_processor_zoo/mine.yaml --name A-gt128-$USER model.num_channels=128
+  aiwcas log          # Ctrl-C stops watching, not the job
+  aiwcas plot
+
+Overrides are Hydra overrides (key=value) and win over the file. Your logs and plots are in
+$AIWCAS_LOGS
+EOF
+}
+
+# The job id of your newest log in $AIWCAS_LOGS (optionally only training jobs)
+latest_job() {
+    local f
+    for f in $(ls -t "$AIWCAS_LOGS"/*.out 2>/dev/null); do
+        [[ "${1:-}" == train && "$(basename "$f")" == anemoi-smoke-* ]] && continue
+        f="${f%.out}"; echo "${f##*-}"; return 0
+    done
+    return 1
+}
+
+log_file() {
+    local f
+    f=$(ls -t "$AIWCAS_LOGS"/*-"$1".out 2>/dev/null | head -1)
+    [[ -z "$f" ]] && f=$(scontrol show job "$1" 2>/dev/null | grep -oP 'StdOut=\K\S+')
+    echo "$f"
+}
+
+job_state() { squeue -h -j "$1" -o %T 2>/dev/null; }   # empty when the job is no longer in the queue
+
+final_state() { sacct -n -X -j "$1" -o State%20,Elapsed 2>/dev/null | head -1 | xargs; }
+
+cmd_log() {
+    local id="${1:-}" f state tp
+    [[ -n "$id" ]] || id=$(latest_job) || die "no jobs yet: logs appear in $AIWCAS_LOGS after 'aiwcas train'"
+    state=$(job_state "$id")
+    if [[ "$state" == PENDING ]]; then
+        echo "Job $id is waiting for a GPU ($(squeue -h -j "$id" -o %r)). The log starts when the job does."
+        echo "Waiting... (Ctrl-C stops waiting; the job stays in the queue)"
+        while [[ "$(job_state "$id")" == PENDING ]]; do sleep 10; done
+        state=$(job_state "$id")
+    fi
+    f=$(log_file "$id")
+    if [[ -n "$state" ]]; then
+        for _ in 1 2 3 4 5 6; do [[ -f "$f" ]] && break; sleep 5; f=$(log_file "$id"); done
+        [[ -f "$f" ]] || die "job $id is $state but its log is not there yet ($AIWCAS_LOGS); try again in a minute"
+        echo "== job $id is $state. Log: $f   (Ctrl-C stops watching, not the job)"
+        tail -n 40 -F "$f" 2>/dev/null & tp=$!
+        trap 'kill $tp 2>/dev/null; echo; exit 0' INT TERM
+        while [[ -n "$(job_state "$id")" ]]; do sleep 5; done
+        sleep 3; kill "$tp" 2>/dev/null; wait "$tp" 2>/dev/null
+        echo
+    else
+        [[ -f "$f" ]] || die "no log for job $id in $AIWCAS_LOGS (is it one of yours? see 'aiwcas status')"
+        tail -n 30 "$f"
+        echo
+    fi
+    echo "== job $id: $(final_state "$id")   full log: $f"
+    if grep -q "SMOKE TEST PASSED" "$f" 2>/dev/null; then
+        echo "== The GPU environment works."
+    elif grep -q "training exit code: 0" "$f" 2>/dev/null; then
+        echo "== Next: aiwcas plot $id    (and aiwcas scoreboard)"
+    elif grep -q "DUE TO TIME LIMIT" "$f" 2>/dev/null; then
+        echo "== The job hit its time limit: use fewer training.max_steps or a longer --time (max 30)."
+    elif [[ -z "$(job_state "$id")" ]] && grep -qE "Error|error:" "$f" 2>/dev/null; then
+        echo "== Something failed. The first error lines:"
+        grep -nE "^[A-Za-z_.]*(Error|Exception)\b|error:" "$f" | head -5
+        echo "   See 'When something goes wrong' in exercises/README.md."
+    fi
+}
+
+cmd_train() {
+    [[ $# -ge 1 ]] || die "usage: aiwcas train <config.yaml> [--name N] [--time MIN] [overrides]"
+    local cfg="$1"; shift
+    local -a submit_args=() overrides=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --name|--time) [[ $# -ge 2 ]] || die "$1 needs a value"; submit_args+=("$1" "$2"); shift 2 ;;
+            --name=*|--time=*) submit_args+=("$1"); shift ;;
+            -*) die "unknown option $1 (overrides look like key=value)" ;;
+            *) overrides+=("$1"); shift ;;
+        esac
+    done
+    # validate exactly what will run (the run name is an override too)
+    local -a vover=("${overrides[@]+"${overrides[@]}"}")
+    local i
+    for ((i = 0; i < ${#submit_args[@]}; i++)); do
+        case "${submit_args[i]}" in
+            --name) vover+=("diagnostics.log.mlflow.run_name=${submit_args[i + 1]}") ;;
+            --name=*) vover+=("diagnostics.log.mlflow.run_name=${submit_args[i]#--name=}") ;;
+        esac
+    done
+    AIWCAS_SUBMITTING=1 "$PY" "$REPO/scripts/validate_config.py" "$cfg" "${vover[@]+"${vover[@]}"}" || exit 1
+    "$REPO/scripts/submit.sh" "$cfg" "${submit_args[@]+"${submit_args[@]}"}" "${overrides[@]+"${overrides[@]}"}"
+}
+
+cmd_status() {
+    local q
+    q=$(squeue --me -h -o "%.10i  %24j %11T %.8M / %8l %R" 2>/dev/null)
+    if [[ -n "$q" ]]; then
+        printf "%10s  %-24s %-11s %s\n" JOBID NAME STATE "RUN TIME / LIMIT   REASON"
+        echo "$q"
+    else
+        echo "No jobs in the queue."
+    fi
+    echo
+    echo "Finished in the last 12 h:"
+    sacct -X -n -S "$(date -d "12 hours ago" +%Y-%m-%dT%H:%M)" -E now -s CD,F,TO,CA,OOM,NF,DL \
+        -o JobID%10,JobName%24,State%12,Elapsed 2>/dev/null || true
+    echo
+    echo "PENDING = waiting for a GPU (normal: the queue is shared). RUNNING: aiwcas log <jobid>."
+    echo "COMPLETED: aiwcas plot <jobid>.  FAILED / TIMEOUT: aiwcas log <jobid> shows why."
+}
+
+cmd_plot() {
+    local id="${1:-}" png
+    [[ -n "$id" ]] || id=$(latest_job train) || die "no training jobs yet (run 'aiwcas train <config.yaml>' first)"
+    png="$AIWCAS_LOGS/loss-$id.png"
+    "$PY" "$REPO/scripts/plot_loss.py" --job "$id" -o "$png" || exit 1
+    if [[ "${TERM_PROGRAM:-}" == vscode ]] && command -v code >/dev/null; then
+        code "$png" && echo "(opened in VS Code)"
+    else
+        echo "Open the PNG in VS Code (File > Open File...) or in JupyterLab's file browser."
+    fi
+}
+
+cmd_check() {
+    local id
+    id=$(sbatch --parsable --output="$AIWCAS_LOGS/%x-%j.out" --export=ALL,REPO_DIR="$REPO" \
+        "$REPO/scripts/smoke_test_gpu.sbatch") || die "sbatch failed (see the message above)"
+    id="${id%%;*}"
+    echo "Submitted the GPU check as job $id (about 15 s once it starts). Watching it:"
+    cmd_log "$id"
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+    help|-h|--help) usage ;;
+    validate) [[ $# -ge 1 ]] || die "usage: aiwcas validate <config.yaml> [overrides]"
+              exec "$PY" "$REPO/scripts/validate_config.py" "$@" ;;
+    train)    cmd_train "$@" ;;
+    status)   cmd_status ;;
+    log|logs) cmd_log "$@" ;;
+    plot)     cmd_plot "$@" ;;
+    scoreboard|score) exec "$PY" "$REPO/scripts/scoreboard.py" show ;;
+    cancel)   [[ $# -ge 1 ]] || die "usage: aiwcas cancel <jobid>   (your job ids: aiwcas status)"
+              scancel "$@" && echo "Cancelled job(s) $*." ;;
+    check)    cmd_check ;;
+    *.yaml)   die "'$cmd' is a config file. Did you mean: aiwcas validate $cmd   or   aiwcas train $cmd ?" ;;
+    *)        echo "aiwcas: unknown command '$cmd'" >&2; echo >&2; usage >&2; exit 2 ;;
+esac

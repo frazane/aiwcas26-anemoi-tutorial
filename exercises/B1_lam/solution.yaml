@@ -9,8 +9,8 @@
 # Upstream recipe: src/anemoi-core/training/src/anemoi/training/config/lam.yaml
 # and .../tests/integration/config/test_lam.yaml (same data pair, CI-tested).
 #
-#   anemoi-training config validate --config-path exercises/B1_lam --config-name solution
-#   scripts/submit.sh exercises/B1_lam/solution.yaml
+#   aiwcas validate exercises/B1_lam/solution.yaml
+#   aiwcas train exercises/B1_lam/solution.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================

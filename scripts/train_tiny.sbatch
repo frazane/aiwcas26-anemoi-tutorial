@@ -11,7 +11,7 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=%x-%j.out           # in the submit dir (#SBATCH lines cannot expand $SCRATCH)
 # To put the log in $SCRATCH instead:  sbatch --output=$SCRATCH/aiwcas26/logs/%x-%j.out scripts/train_tiny.sbatch
-# Generic version for any config (used in hour 2): scripts/submit.sh <config.yaml>
+# Students: `aiwcas train configs/04_tiny_train.yaml` does the same through the generic train.sbatch.
 #
 # Tiny anemoi-training run on 1 A100 (AIWCAS 2026 tutorial).
 #   sbatch scripts/train_tiny.sbatch                       # from the repo root

@@ -8,8 +8,8 @@
 #   TODO(5) name your run
 #
 #   cp exercises/0_make_it_yours/skeleton.yaml exercises/0_make_it_yours/mine.yaml   # edit mine.yaml
-#   anemoi-training config validate --config-path exercises/0_make_it_yours --config-name mine
-#   scripts/submit.sh exercises/0_make_it_yours/mine.yaml
+#   aiwcas validate exercises/0_make_it_yours/mine.yaml
+#   aiwcas train exercises/0_make_it_yours/mine.yaml
 #
 # Stuck? solution.yaml is one possible answer.
 #

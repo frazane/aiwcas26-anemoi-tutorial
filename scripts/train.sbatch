@@ -11,9 +11,10 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=%x-%j.out           # relative to the submit dir; scripts/submit.sh overrides it
 #
-# Generic 1-GPU anemoi-training job (AIWCAS 2026 tutorial). Prefer the wrapper, which puts the
-# log in $SCRATCH/aiwcas26/logs and checks the config first:
+# Generic 1-GPU anemoi-training job (AIWCAS 2026 tutorial). Students: use `aiwcas train`, which
+# validates the config and calls scripts/submit.sh, which puts the log in $SCRATCH/aiwcas26/logs:
 #
+#   aiwcas train exercises/A_processor_zoo/my_run.yaml [--name RUN] [hydra overrides...]
 #   scripts/submit.sh exercises/A_processor_zoo/my_run.yaml [--name RUN] [hydra overrides...]
 #
 # Direct use also works (log then lands in the directory you submit from):
@@ -42,7 +43,7 @@ REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 # Shared env, by default mounted from its squashfs image (imports from one file, not ~57k on Lustre)
 source "$REPO_DIR/scripts/anemoi_env.sh"
 
-LOG_DIR="$SCRATCH/aiwcas26/logs"
+LOG_DIR="${AIWCAS_LOGS:-$SCRATCH/aiwcas26/logs}"
 mkdir -p "$LOG_DIR"
 GPU_CSV="$LOG_DIR/${SLURM_JOB_NAME:-train}-${SLURM_JOB_ID:-0}.gpu.csv"
 STDOUT="$(scontrol show job "${SLURM_JOB_ID}" 2>/dev/null | grep -oP 'StdOut=\K\S+' || true)"

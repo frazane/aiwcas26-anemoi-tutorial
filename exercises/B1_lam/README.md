@@ -40,13 +40,13 @@ Three parts of anemoi work together here, and each is a few lines of config:
    * **TODO(4)** `max_distance_km`: how far from the LAM global points are kept. Upstream uses 300 km.
    * **TODO(5)** the `forcing` and `diagnostic` lists. Only 13 variables exist in both datasets: `msl`, `sp`,
      `t_50`, `t_100`, `tp` and the 8 cos/sin forcings. The defaults from `data/zarr.yaml` (`lsm`, `z`,
-     `insolation`, `cp`, ...) are ERA5-only. `validate` does **not** catch a wrong name: the job fails after
-     ~5 min (see the table below).
+     `insolation`, `cp`, ...) are ERA5-only. `aiwcas validate` checks the names against the cutout
+     (`anemoi-training config validate` does not: the job would fail after startup, see the table below).
    * **TODO(6)** the hidden-mesh `resolution`: 6 (~120 km, 103 nodes), 7 (~60 km, 410 nodes) or 8 (~30 km,
      1613 nodes).
    * **TODO(7)** `attribute_name` of the output mask: `cutout_mask`.
    * **TODO(8)** a run name, e.g. `B1-thin4-tri7-<you>`.
-2. Validate, submit, plot (see `../README.md`).
+2. `aiwcas validate exercises/B1_lam/mine.yaml` until it says OK, then `aiwcas train exercises/B1_lam/mine.yaml`, `aiwcas log` and `aiwcas plot` (see `../README.md`).
 
 The graph file name follows `thinning` and `resolution` automatically
 (`lam_italy_thin<N>_tri<R>.pt` in `$SCRATCH/aiwcas26/hour2/graphs/`). It is built on your first run in about
@@ -84,7 +84,7 @@ over Italy: about 260 Pa (2.6 hPa) in the dry run.
 |---|---|---|
 | `You must specify 'graph'` / `'training'` | TODO(1) not filled | `limited_area`, `lam` |
 | `Missing mandatory value: dataloader.dataset.cutout[0].dataset` | TODO(2) not filled | the two `${system.input...}` names |
-| `AssertionError: Data indexing has invalid entries [...]` (in the job, after startup) | a forcing or diagnostic that CERRA does not have (TODO 5) | only the 8 cos/sin forcings, diagnostic `[tp]` |
+| `... lists cp, which the dataset does not have` (`aiwcas validate`), or `AssertionError: Data indexing has invalid entries [...]` in a job | a forcing or diagnostic that CERRA does not have (TODO 5) | only the 8 cos/sin forcings, diagnostic `[tp]` |
 | `ValueError: Thinning only works latitude/longitude fields` (in the job) | the cutout order is swapped: O96 (a 1-D grid) got the `thinning` | CERRA first |
 | `RuntimeError: Sizes of tensors must match ... Expected size 763 but got size 3948` (in the job) | you changed `area`/`max_distance_km` but kept the graph name: the old graph was reused | new graph name |
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Plot the loss curves of one of YOUR runs (reads the offline MLflow files; no server needed).
 
+    aiwcas plot [jobid]                                  # what students run (bin/aiwcas)
     python scripts/plot_loss.py --job 12345678          # the Slurm job id printed by submit.sh
     python scripts/plot_loss.py --run-dir <.../logs/mlflow/<exp>/<run_id>>
     python scripts/plot_loss.py --latest                 # your most recent hour-2 run
@@ -40,7 +41,8 @@ def main() -> int:
         runs = [Path(p).parent.parent for p in glob.glob(os.path.join(root, "hour2", "*", "logs", "mlflow", "*", "*", "metrics"))]
         run = max(runs, key=lambda p: p.stat().st_mtime) if runs else None
     if run is None or not run.is_dir():
-        print("no run found (is the job finished? did it reach the first logged step?)", file=sys.stderr)
+        what = f"for job {args.job} " if args.job else ""
+        print(f"no training run found {what}(is it a training job of yours? has it reached its first logged step?)", file=sys.stderr)
         return 1
 
     name = (run / "tags" / "mlflow.runName").read_text().strip() if (run / "tags" / "mlflow.runName").is_file() else run.name

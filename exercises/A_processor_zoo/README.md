@@ -36,7 +36,7 @@ assume about how information moves around the globe?
      `found duplicate key processor`. The schema rejects keys a processor does not know
      (`Extra field 'num_heads' is not allowed`).
    * **TODO(5)** a run name, e.g. `A-gt-<you>`.
-2. Validate, submit, plot (see `../README.md`).
+2. `aiwcas validate exercises/A_processor_zoo/mine.yaml` until it says OK, then `aiwcas train exercises/A_processor_zoo/mine.yaml`, `aiwcas log` and `aiwcas plot` (see `../README.md`).
 
 ## Things to try once it runs
 

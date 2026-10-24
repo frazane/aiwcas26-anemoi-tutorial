@@ -5,8 +5,8 @@
 # processor changes. This file is the GraphTransformer answer to skeleton.yaml.
 # The other architectures are in variants/ (gnn, transformer, point_wise).
 #
-#   anemoi-training config validate --config-path exercises/A_processor_zoo --config-name solution
-#   scripts/submit.sh exercises/A_processor_zoo/solution.yaml
+#   aiwcas validate exercises/A_processor_zoo/solution.yaml
+#   aiwcas train exercises/A_processor_zoo/solution.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================

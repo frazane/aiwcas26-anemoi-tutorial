@@ -8,8 +8,8 @@
 #   TODO(5) name your run
 #
 #   cp exercises/A_processor_zoo/skeleton.yaml exercises/A_processor_zoo/mine.yaml   # edit mine.yaml
-#   anemoi-training config validate --config-path exercises/A_processor_zoo --config-name mine
-#   scripts/submit.sh exercises/A_processor_zoo/mine.yaml
+#   aiwcas validate exercises/A_processor_zoo/mine.yaml
+#   aiwcas train exercises/A_processor_zoo/mine.yaml
 #
 # Stuck? solution.yaml (GraphTransformer) and variants/*.yaml are the answers.
 #

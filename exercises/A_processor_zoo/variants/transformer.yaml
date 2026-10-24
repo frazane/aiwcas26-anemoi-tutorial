@@ -5,8 +5,8 @@
 # processor changes. This is the Transformer answer: global
 # self-attention between the hidden nodes instead of message passing along mesh edges.
 #
-#   anemoi-training config validate --config-path exercises/A_processor_zoo/variants --config-name transformer
-#   scripts/submit.sh exercises/A_processor_zoo/variants/transformer.yaml
+#   aiwcas validate exercises/A_processor_zoo/variants/transformer.yaml
+#   aiwcas train exercises/A_processor_zoo/variants/transformer.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================

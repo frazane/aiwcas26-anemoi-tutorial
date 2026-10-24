@@ -28,7 +28,7 @@ They are trained together with the **almost-fair CRPS** (afCRPS), the loss of EC
      `mode: max-autotune`, which costs minutes of a 10-minute job.
    * **TODO(6)** `alpha` of the CRPS: 1.0 fair, 0.0 standard, 0.95 AIFS-ENS.
    * **TODO(7)** a run name, e.g. `C-ens4-a095-<you>`.
-2. Validate, submit, plot (see `../README.md`).
+2. `aiwcas validate exercises/C_ensemble_crps/mine.yaml` until it says OK, then `aiwcas train exercises/C_ensemble_crps/mine.yaml`, `aiwcas log` and `aiwcas plot` (see `../README.md`).
 
 `diagnostics: evaluation_ens` adds a `RolloutEval` callback that needs `task.validation_rollout`. The
 skeleton already switches it off with `diagnostics.callbacks: []`, and the ensemble plots with

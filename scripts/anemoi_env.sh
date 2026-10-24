@@ -3,7 +3,7 @@
 #   source "$REPO_DIR/scripts/anemoi_env.sh"
 #
 # Environment variables (all optional):
-#   ANEMOI_VENV      the venv directory (default: the shared env
+#   ANEMOI_VENV      the venv directory (exported by setup.sh as $AIWCAS_ENV; default: the shared env
 #                    /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi)
 #   ANEMOI_ENV_MODE  auto (default): mount the squashfs image next to the venv if there is one, else
 #                                    fall back to the plain venv (with a warning if the mount fails)

@@ -7,8 +7,8 @@
 # that ensemble against the analysis. This is the AIFS-ENS training recipe in
 # miniature: 4 members, 64 channels, 4 layers.
 #
-#   anemoi-training config validate --config-path exercises/C_ensemble_crps --config-name solution
-#   scripts/submit.sh exercises/C_ensemble_crps/solution.yaml
+#   aiwcas validate exercises/C_ensemble_crps/solution.yaml
+#   aiwcas train exercises/C_ensemble_crps/solution.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================

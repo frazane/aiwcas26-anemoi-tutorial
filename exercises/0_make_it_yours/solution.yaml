@@ -8,8 +8,8 @@
 #   * 1 input step instead of 2,
 #   * rollout 2: the model is trained on its own 6 h forecast as well.
 #
-#   anemoi-training config validate --config-path exercises/0_make_it_yours --config-name solution
-#   scripts/submit.sh exercises/0_make_it_yours/solution.yaml
+#   aiwcas validate exercises/0_make_it_yours/solution.yaml
+#   aiwcas train exercises/0_make_it_yours/solution.yaml
 #
 # Standalone on purpose: it does NOT build on configs/04_tiny_train.yaml.
 # =============================================================================
