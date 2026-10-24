@@ -2,8 +2,10 @@
 
 GitHub's notebook viewer cannot resolve relative image paths, so figures
 linked as ``figures/x.svg`` do not render there. This rewrites such links
-to ``attachment:x.svg`` and stores the file inside the cell, so the
-notebook is self-contained. Re-run after editing a figure.
+to ``attachment:x.png`` and stores the PNG inside the cell, so the
+notebook is self-contained. GitHub does not render SVG attachments, so
+an SVG link embeds the PNG rendered next to it by render_figures.py.
+Re-run both after editing a figure.
 
 Usage: python scripts/embed_figures.py notebooks/03_models.ipynb [...]
 """
@@ -14,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 
-MIME = {".svg": "image/svg+xml", ".png": "image/png"}
+MIME = {".png": "image/png"}
 # ![alt](figures/x.svg) or <img src="figures/x.svg" alt="..." ...>
 MD_RE = re.compile(r"!\[([^\]]*)\]\((figures/[^)\s]+)\)")
 IMG_RE = re.compile(r'<img\s[^>]*src="(figures/[^"]+)"[^>]*>')
@@ -32,6 +34,8 @@ def embed(nb_path: Path) -> int:
 
         def attach(rel: str) -> str:
             path = nb_path.parent / rel
+            if path.suffix == ".svg":
+                path = path.with_suffix(".png")
             name = path.name
             data = base64.b64encode(path.read_bytes()).decode()
             attachments[name] = {MIME[path.suffix]: data}
