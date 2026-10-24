@@ -1,0 +1,71 @@
+# Encoder-processor-decoder graph recipe for the AIWCAS 2026 graphs notebook.
+# Mirrors anemoi-training's default `graph: multi_scale` config
+# (src/anemoi-core/training/src/anemoi/training/config/graph/multi_scale.yaml),
+# with the dataset path written out instead of interpolated from the training config.
+#
+# Build it with:
+#   anemoi-graphs create notebooks/configs/02_graph_recipe.yaml $SCRATCH/aiwcas26/graphs/graph_cli.pt
+#
+# The notebook sets the `dataset:` path below from its DATASET variable.
+
+nodes:
+  # Data nodes: the gridpoints of the anemoi dataset (here O96, 40 320 points)
+  data:
+    node_builder:
+      _target_: anemoi.graphs.nodes.AnemoiDatasetNodes
+      dataset: /leonardo_work/tra26_aiwcas/a08trd25/data/anemoi/aifs-ea-an-oper-0001-mars-o96-2017-2017-6h-v8-testing.zarr
+    attributes:
+      area_weight:
+        _target_: anemoi.graphs.nodes.attributes.SphericalAreaWeights
+        norm: unit-max
+        fill_value: 0
+
+  # Hidden nodes: a refined icosahedron (resolution 5 -> 10 242 nodes)
+  hidden:
+    node_builder:
+      _target_: anemoi.graphs.nodes.TriNodes
+      resolution: 5
+
+edges:
+  # Encoder: data -> hidden
+  - source_name: data
+    target_name: hidden
+    edge_builders:
+      - _target_: anemoi.graphs.edges.CutOffEdges
+        cutoff_factor: 0.6
+    attributes:
+      edge_length:
+        _target_: anemoi.graphs.edges.attributes.EdgeLength
+        norm: unit-std
+      edge_dirs:
+        _target_: anemoi.graphs.edges.attributes.EdgeDirection
+        norm: unit-std
+
+  # Processor: hidden -> hidden, multi-scale edges of the refined icosahedron
+  - source_name: hidden
+    target_name: hidden
+    edge_builders:
+      - _target_: anemoi.graphs.edges.MultiScaleEdges
+        x_hops: 1
+        scale_resolutions: 5
+    attributes:
+      edge_length:
+        _target_: anemoi.graphs.edges.attributes.EdgeLength
+        norm: unit-std
+      edge_dirs:
+        _target_: anemoi.graphs.edges.attributes.EdgeDirection
+        norm: unit-std
+
+  # Decoder: hidden -> data, each data node gets its 3 nearest hidden nodes
+  - source_name: hidden
+    target_name: data
+    edge_builders:
+      - _target_: anemoi.graphs.edges.KNNEdges
+        num_nearest_neighbours: 3
+    attributes:
+      edge_length:
+        _target_: anemoi.graphs.edges.attributes.EdgeLength
+        norm: unit-std
+      edge_dirs:
+        _target_: anemoi.graphs.edges.attributes.EdgeDirection
+        norm: unit-std

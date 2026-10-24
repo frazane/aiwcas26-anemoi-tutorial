@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">How an anemoi-training config is composed</title>
+  <desc id="d">Packaged config groups plus your YAML file and command-line overrides are composed by Hydra, resolved by OmegaConf, validated by pydantic, and then used to build the datamodule, graph, task, Lightning module and trainer.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+    </marker>
+    <style>
+      .h   { font-size: 15px; font-weight: 700; fill: #0b0b0b; }
+      .sub { font-size: 12px; fill: #52514e; }
+      .g   { font-size: 14px; font-weight: 700; fill: #0b0b0b; }
+      .o   { font-size: 12.5px; fill: #52514e; font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+      .b   { font-size: 14px; font-weight: 700; fill: #0b0b0b; }
+      .s   { font-size: 12px; fill: #52514e; }
+      .box { fill: #ffffff; stroke: #d6d5d0; stroke-width: 1.2; }
+      .ln  { stroke: #8b8a85; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+  <rect width="1000" height="620" fill="#fcfcfb"/>
+
+  <!-- column headers -->
+  <text x="20" y="34" class="h">1  Config groups</text>
+  <text x="20" y="52" class="sub">packaged defaults: group: option</text>
+  <text x="360" y="34" class="h">2  Compose &amp; check</text>
+  <text x="360" y="52" class="sub">at startup of anemoi-training train</text>
+  <text x="680" y="34" class="h">3  What gets built</text>
+  <text x="680" y="52" class="sub">objects instantiated from the config</text>
+
+  <!-- ===== left: config groups; stripe colour = consumer ===== -->
+  <g>
+    <rect x="20" y="68"  width="250" height="40" rx="6" class="box"/><rect x="20" y="68"  width="6" height="40" rx="2" fill="#2a78d6"/>
+    <text x="36" y="93"  class="g">data</text><text x="150" y="93" class="o">zarr</text>
+    <rect x="20" y="116" width="250" height="40" rx="6" class="box"/><rect x="20" y="116" width="6" height="40" rx="2" fill="#2a78d6"/>
+    <text x="36" y="141" class="g">dataloader</text><text x="150" y="141" class="o">native_grid</text>
+    <rect x="20" y="164" width="250" height="40" rx="6" class="box"/><rect x="20" y="164" width="6" height="40" rx="2" fill="#1baf7a"/>
+    <text x="36" y="189" class="g">graph</text><text x="150" y="189" class="o">multi_scale</text>
+    <rect x="20" y="212" width="250" height="40" rx="6" class="box"/><rect x="20" y="212" width="6" height="40" rx="2" fill="#6250d6"/>
+    <text x="36" y="237" class="g">task</text><text x="150" y="237" class="o">forecaster</text>
+    <rect x="20" y="260" width="250" height="40" rx="6" class="box"/><rect x="20" y="260" width="6" height="40" rx="2" fill="#eb6834"/>
+    <text x="36" y="285" class="g">model</text><text x="150" y="285" class="o">gnn</text>
+    <rect x="20" y="308" width="250" height="58" rx="6" class="box"/><rect x="20" y="308" width="6" height="58" rx="2" fill="#eb6834"/>
+    <text x="36" y="331" class="g">training</text><text x="150" y="331" class="o">single</text>
+    <text x="36" y="352" class="s">scalers · training_loss · optimization</text>
+    <rect x="20" y="374" width="250" height="58" rx="6" class="box"/><rect x="20" y="374" width="6" height="58" rx="2" fill="#a3a29c"/>
+    <text x="36" y="397" class="g">system</text><text x="150" y="397" class="o">example</text>
+    <text x="36" y="418" class="s">hardware · input · output (paths)</text>
+    <rect x="20" y="440" width="250" height="58" rx="6" class="box"/><rect x="20" y="440" width="6" height="58" rx="2" fill="#a3a29c"/>
+    <text x="36" y="463" class="g">diagnostics</text><text x="150" y="463" class="o">evaluation</text>
+    <text x="36" y="484" class="s">log · plot · checkpoint · callbacks</text>
+  </g>
+
+  <!-- your file + CLI -->
+  <rect x="20" y="516" width="250" height="40" rx="6" fill="#fdf0ea" stroke="#eb6834" stroke-width="1.5"/>
+  <text x="36" y="535" class="g">your YAML</text><text x="128" y="535" class="o">04_tiny_train.yaml</text>
+  <text x="36" y="550" class="s">defaults: list + _self_ overrides</text>
+  <rect x="20" y="564" width="250" height="40" rx="6" fill="#fdf0ea" stroke="#eb6834" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="36" y="583" class="g">command line</text><text x="140" y="583" class="o">key=value</text>
+  <text x="36" y="598" class="s">highest priority, last word</text>
+
+  <!-- bracket from left column into compose -->
+  <path d="M278,70 C300,70 300,70 300,90 L300,580 C300,600 300,600 278,600" class="ln"/>
+  <path d="M300,191 L352,191" class="ln" marker-end="url(#arr)"/>
+  <text x="306" y="176" class="s">merge,</text>
+  <text x="306" y="212" class="s">later</text>
+  <text x="306" y="227" class="s">wins</text>
+
+  <!-- ===== middle: compose pipeline ===== -->
+  <rect x="360" y="160" width="250" height="62" rx="8" fill="#ffffff" stroke="#0b0b0b" stroke-width="1.4"/>
+  <text x="376" y="186" class="b">Hydra compose</text>
+  <text x="376" y="206" class="s">defaults list + overrides → one tree</text>
+  <path d="M485,222 L485,256" class="ln" marker-end="url(#arr)"/>
+  <rect x="360" y="260" width="250" height="62" rx="8" fill="#ffffff" stroke="#0b0b0b" stroke-width="1.4"/>
+  <text x="376" y="286" class="b">OmegaConf resolve</text>
+  <text x="376" y="306" class="s">fill in <tspan class="o">${…}</tspan> references, env vars</text>
+  <path d="M485,322 L485,356" class="ln" marker-end="url(#arr)"/>
+  <rect x="360" y="360" width="250" height="62" rx="8" fill="#ffffff" stroke="#0b0b0b" stroke-width="1.4"/>
+  <text x="376" y="386" class="b">pydantic BaseSchema</text>
+  <text x="376" y="406" class="s">types, required fields, typos → error</text>
+  <text x="372" y="452" class="s">same check as</text>
+  <text x="372" y="470" class="o">anemoi-training config validate</text>
+  <text x="372" y="494" class="s">config_validation: True</text>
+
+  <!-- fan-out from schema to consumers -->
+  <path d="M610,391 C640,391 640,95 672,95"   class="ln" marker-end="url(#arr)"/>
+  <path d="M610,391 C640,391 640,190 672,190" class="ln" marker-end="url(#arr)"/>
+  <path d="M610,391 C640,391 640,282 672,282" class="ln" marker-end="url(#arr)"/>
+  <path d="M610,391 C640,391 640,385 672,385" class="ln" marker-end="url(#arr)"/>
+  <path d="M610,391 C640,391 640,510 672,510" class="ln" marker-end="url(#arr)"/>
+
+  <!-- ===== right: consumers ===== -->
+  <rect x="680" y="68" width="300" height="62" rx="8" class="box"/><rect x="680" y="68" width="6" height="62" rx="2" fill="#2a78d6"/>
+  <text x="696" y="92" class="b">AnemoiDatasetsDataModule</text>
+  <text x="696" y="112" class="s">open_dataset(dataset_config) → batches</text>
+
+  <rect x="680" y="160" width="300" height="62" rx="8" class="box"/><rect x="680" y="160" width="6" height="62" rx="2" fill="#1baf7a"/>
+  <text x="696" y="184" class="b">Graph (anemoi-graphs)</text>
+  <text x="696" y="204" class="s">load system.input.graph, or build + save</text>
+
+  <rect x="680" y="252" width="300" height="62" rx="8" class="box"/><rect x="680" y="252" width="6" height="62" rx="2" fill="#6250d6"/>
+  <text x="696" y="276" class="b">Task: Forecaster</text>
+  <text x="696" y="296" class="s">which dates are inputs / targets, rollout</text>
+
+  <rect x="680" y="344" width="300" height="82" rx="8" class="box"/><rect x="680" y="344" width="6" height="82" rx="2" fill="#eb6834"/>
+  <text x="696" y="368" class="b">LightningModule: SingleTraining</text>
+  <text x="696" y="388" class="s">AnemoiModelInterface (pre-processors + model)</text>
+  <text x="696" y="406" class="s">loss + scalers, optimiser + LR schedule</text>
+
+  <rect x="680" y="456" width="300" height="104" rx="8" class="box"/><rect x="680" y="456" width="6" height="104" rx="2" fill="#a3a29c"/>
+  <text x="696" y="480" class="b">pl.Trainer</text>
+  <text x="696" y="500" class="s">devices = num_gpus_per_node, num_nodes</text>
+  <text x="696" y="518" class="s">precision, max_steps, gradient clipping</text>
+  <text x="696" y="536" class="s">callbacks: checkpoints, plots</text>
+  <text x="696" y="554" class="s">logger: MLflow (offline) / W&amp;B</text>
+
+  <text x="680" y="598" class="s">trainer.fit(model, datamodule)</text>
+</svg>

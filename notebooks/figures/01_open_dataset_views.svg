@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 500" width="1180" height="500" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+<title>open_dataset builds a tree of lazy views</title>
+<defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#52514e"/></marker><marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/></marker><marker id="aho" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#eb6834"/></marker></defs>
+<rect x="1" y="1" width="1178" height="498" rx="14" fill="#ffffff" stroke="#e3e3e0"/>
+<text x="28" y="40" font-size="20" font-weight="700" fill="#0b0b0b">open_dataset(...) builds a tree of lazy views</text>
+<text x="28" y="64" font-size="14" fill="#52514e">The cutout example from this notebook. Building the tree copies no data; reading ds[i] walks it.</text>
+<rect x="28" y="130" width="140" height="74" rx="9" fill="#1baf7a" fill-opacity="0.14" stroke="#1baf7a" stroke-width="1.8"/>
+<text x="98.0" y="154" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Zarr store</text>
+<text x="98.0" y="174" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">keisler … 1p0d</text>
+<text x="98.0" y="190" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">1° lat/lon, 3-hourly</text>
+<rect x="190" y="130" width="140" height="74" rx="9" fill="#2a78d6" fill-opacity="0.1" stroke="#2a78d6" stroke-width="1.8"/>
+<text x="260.0" y="154" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Subset</text>
+<text x="260.0" y="174" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">frequency='6h'</text>
+<rect x="352" y="130" width="140" height="74" rx="9" fill="#6250d6" fill-opacity="0.1" stroke="#6250d6" stroke-width="1.8"/>
+<text x="422.0" y="154" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Select</text>
+<text x="422.0" y="174" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">4 variables</text>
+<rect x="514" y="130" width="140" height="74" rx="9" fill="#6250d6" fill-opacity="0.1" stroke="#6250d6" stroke-width="1.8"/>
+<text x="584.0" y="154" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Rename</text>
+<text x="584.0" y="174" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">temperature_850</text>
+<text x="584.0" y="190" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">→ t_850, …</text>
+<rect x="676" y="130" width="140" height="74" rx="9" fill="#eb6834" fill-opacity="0.1" stroke="#eb6834" stroke-width="1.8"/>
+<text x="746.0" y="154" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Cropping</text>
+<text x="746.0" y="174" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">area=(72,-25,30,45)</text>
+<line x1="168" y1="167.0" x2="187" y2="167.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<line x1="330" y1="167.0" x2="349" y2="167.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<line x1="492" y1="167.0" x2="511" y2="167.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<line x1="654" y1="167.0" x2="673" y2="167.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<rect x="28" y="300" width="140" height="74" rx="9" fill="#1baf7a" fill-opacity="0.14" stroke="#1baf7a" stroke-width="1.8"/>
+<text x="98.0" y="324" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Zarr store</text>
+<text x="98.0" y="344" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">… o48 …</text>
+<text x="98.0" y="360" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">~2° global, 6-hourly</text>
+<rect x="190" y="300" width="140" height="74" rx="9" fill="#2a78d6" fill-opacity="0.1" stroke="#2a78d6" stroke-width="1.8"/>
+<text x="260.0" y="324" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Subset</text>
+<text x="260.0" y="344" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">end='1979-01-01T06'</text>
+<rect x="352" y="300" width="140" height="74" rx="9" fill="#6250d6" fill-opacity="0.1" stroke="#6250d6" stroke-width="1.8"/>
+<text x="422.0" y="324" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Select</text>
+<text x="422.0" y="344" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">same 4 variables</text>
+<line x1="168" y1="337.0" x2="187" y2="337.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<line x1="330" y1="337.0" x2="349" y2="337.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<rect x="868" y="206.0" width="160" height="92" rx="9" fill="#0b0b0b" fill-opacity="0.06" stroke="#0b0b0b" stroke-width="1.8"/>
+<text x="948.0" y="230.0" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b">Cutout</text>
+<text x="948.0" y="250.0" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">regional points +</text>
+<text x="948.0" y="266.0" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">global points outside</text>
+<path d="M816,167.0 C843,167.0 828,232.0 865,232.0" fill="none" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<path d="M492,337.0 L806,337.0 C843,337.0 828,272.0 865,272.0" fill="none" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<rect x="1068" y="216.0" width="92" height="72" rx="9" fill="#0b0b0b" fill-opacity="0.0" stroke="#0b0b0b" stroke-width="1.8"/>
+<text x="1114.0" y="240.0" font-size="15" font-weight="700" text-anchor="middle" fill="#0b0b0b" font-family="Menlo, Consolas, monospace">ds</text>
+<text x="1114.0" y="260.0" font-size="12" text-anchor="middle" fill="#52514e" font-family="Menlo, Consolas, monospace">what you get</text>
+<line x1="1028" y1="252.0" x2="1065" y2="252.0" stroke="#52514e" stroke-width="1.6" marker-end="url(#ah3)"/>
+<line x1="1160" y1="100" x2="68" y2="100" stroke="#2a78d6" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ahb)"/>
+<text x="594.0" y="92" font-size="13" text-anchor="middle" fill="#0b0b0b">ds[i]: the request travels root → leaves: each view translates the index (date, variables, points)</text>
+<line x1="68" y1="410" x2="1160" y2="410" stroke="#eb6834" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#aho)"/>
+<text x="594.0" y="432" font-size="13" text-anchor="middle" fill="#0b0b0b">arrays flow leaves → root: only the chunks needed for date i are read, then sliced, stacked and merged</text>
+<rect x="28" y="461" width="14" height="14" rx="3" fill="#1baf7a" fill-opacity="0.18" stroke="#1baf7a" stroke-width="1.5"/>
+<text x="48" y="473" font-size="12.5" fill="#52514e">leaf: Zarr store</text>
+<rect x="183.6" y="461" width="14" height="14" rx="3" fill="#2a78d6" fill-opacity="0.18" stroke="#2a78d6" stroke-width="1.5"/>
+<text x="203.6" y="473" font-size="12.5" fill="#52514e">dates (start, end, frequency)</text>
+<rect x="425.0" y="461" width="14" height="14" rx="3" fill="#6250d6" fill-opacity="0.18" stroke="#6250d6" stroke-width="1.5"/>
+<text x="445.0" y="473" font-size="12.5" fill="#52514e">variables (select, rename, …)</text>
+<rect x="666.4" y="461" width="14" height="14" rx="3" fill="#eb6834" fill-opacity="0.18" stroke="#eb6834" stroke-width="1.5"/>
+<text x="686.4" y="473" font-size="12.5" fill="#52514e">grid points (area, thinning)</text>
+<rect x="901.1999999999999" y="461" width="14" height="14" rx="3" fill="#0b0b0b" fill-opacity="0.18" stroke="#0b0b0b" stroke-width="1.5"/>
+<text x="921.1999999999999" y="473" font-size="12.5" fill="#52514e">combine (join, concat, cutout, …)</text>
+</svg>

@@ -1,0 +1,6 @@
+[submodule "src/anemoi-core"]
+	path = src/anemoi-core
+	url = https://github.com/ecmwf/anemoi-core.git
+[submodule "src/anemoi-datasets"]
+	path = src/anemoi-datasets
+	url = https://github.com/ecmwf/anemoi-datasets.git

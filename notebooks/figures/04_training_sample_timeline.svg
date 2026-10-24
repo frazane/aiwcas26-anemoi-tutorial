@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">One training sample: multistep inputs, forecast step and rollout</title>
+  <desc id="d">With multistep_input 2 and a 6 hour timestep the model sees t minus 6h and t and predicts t plus 6h. With rollout 3 the prediction is fed back as input to predict t plus 12h and t plus 18h, and the loss is averaged over the three steps.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+    </marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#eb6834"/>
+    </marker>
+    <style>
+      .h  { font-size: 15px; font-weight: 700; fill: #0b0b0b; }
+      .l  { font-size: 13px; fill: #0b0b0b; }
+      .s  { font-size: 12px; fill: #52514e; }
+      .m  { font-size: 12px; fill: #52514e; font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+      .tk { font-size: 12.5px; fill: #52514e; text-anchor: middle; font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+      .in { fill: #2a78d6; }
+      .tg { fill: #ffffff; stroke: #eb6834; stroke-width: 2.2; }
+      .pr { fill: #fdf0ea; stroke: #eb6834; stroke-width: 1.4; stroke-dasharray: 4 3; }
+      .grid { stroke: #e6e5e0; stroke-width: 1; }
+    </style>
+  </defs>
+  <rect width="1000" height="470" fill="#fcfcfb"/>
+
+  <!-- time axis: columns at x = 300 + 130*k  (k = 0..5 : t-12h .. t+18h) -->
+  <g>
+    <line x1="300" y1="70" x2="300" y2="400" class="grid"/>
+    <line x1="430" y1="70" x2="430" y2="400" class="grid"/>
+    <line x1="560" y1="70" x2="560" y2="400" class="grid"/>
+    <line x1="690" y1="70" x2="690" y2="400" class="grid"/>
+    <line x1="820" y1="70" x2="820" y2="400" class="grid"/>
+    <line x1="950" y1="70" x2="950" y2="400" class="grid"/>
+    <text x="300" y="60" class="tk">t−12h</text>
+    <text x="430" y="60" class="tk">t−6h</text>
+    <text x="560" y="60" class="tk" style="font-weight:700;fill:#0b0b0b">t</text>
+    <text x="690" y="60" class="tk">t+6h</text>
+    <text x="820" y="60" class="tk">t+12h</text>
+    <text x="950" y="60" class="tk">t+18h</text>
+  </g>
+  <text x="20" y="34" class="h">What one training sample contains (task: forecaster, timestep 6h)</text>
+  <text x="980" y="34" class="s" text-anchor="end">batch shape: (batch, time, ens, grid, vars)</text>
+
+  <!-- row 0: dataset -->
+  <text x="20" y="104" class="l">dataset dates</text>
+  <text x="20" y="121" class="s">6-hourly, from open_dataset</text>
+  <g fill="#d6d5d0">
+    <circle cx="300" cy="108" r="9"/><circle cx="430" cy="108" r="9"/><circle cx="560" cy="108" r="9"/>
+    <circle cx="690" cy="108" r="9"/><circle cx="820" cy="108" r="9"/><circle cx="950" cy="108" r="9"/>
+  </g>
+
+  <!-- row 1: rollout 1 -->
+  <text x="20" y="182" class="l">rollout = 1 (default)</text>
+  <text x="20" y="199" class="m">multistep_input: 2</text>
+  <rect x="410" y="172" width="40" height="24" rx="5" class="in"/>
+  <rect x="540" y="172" width="40" height="24" rx="5" class="in"/>
+  <rect x="670" y="172" width="40" height="24" rx="5" class="tg"/>
+  <path d="M582,184 L664,184" stroke="#52514e" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="623" y="168" class="s" text-anchor="middle">model</text>
+  <text x="720" y="189" class="s">loss(pred, target)</text>
+  <text x="430" y="216" class="s" text-anchor="middle">batch[:, 0]</text>
+  <text x="560" y="216" class="s" text-anchor="middle">batch[:, 1]</text>
+  <text x="690" y="216" class="s" text-anchor="middle">batch[:, 2]</text>
+
+  <!-- row 2: rollout 3 -->
+  <text x="20" y="272" class="l">rollout = 3</text>
+  <text x="20" y="289" class="m">rollout: {start: 3, maximum: 3}</text>
+  <text x="20" y="306" class="s">5 dates loaded per sample</text>
+  <rect x="410" y="262" width="40" height="24" rx="5" class="in"/>
+  <rect x="540" y="262" width="40" height="24" rx="5" class="in"/>
+  <!-- step 1 -->
+  <rect x="670" y="262" width="40" height="24" rx="5" class="tg"/>
+  <path d="M582,274 L664,274" stroke="#52514e" stroke-width="1.6" marker-end="url(#a)"/>
+  <!-- step 2: prediction fed back -->
+  <rect x="670" y="312" width="40" height="24" rx="5" class="pr"/>
+  <rect x="800" y="312" width="40" height="24" rx="5" class="tg"/>
+  <path d="M712,324 L794,324" stroke="#52514e" stroke-width="1.6" marker-end="url(#a)"/>
+  <!-- step 3 -->
+  <rect x="800" y="362" width="40" height="24" rx="5" class="pr"/>
+  <rect x="930" y="362" width="40" height="24" rx="5" class="tg"/>
+  <path d="M842,374 L924,374" stroke="#52514e" stroke-width="1.6" marker-end="url(#a)"/>
+  <!-- feed-back arrows -->
+  <path d="M690,288 L690,306" stroke="#eb6834" stroke-width="1.6" marker-end="url(#ao)"/>
+  <path d="M820,338 L820,356" stroke="#eb6834" stroke-width="1.6" marker-end="url(#ao)"/>
+  <text x="600" y="330" class="s" text-anchor="end">prediction re-used</text>
+  <text x="600" y="346" class="s" text-anchor="end">as input (+ true forcings);</text>
+  <text x="600" y="362" class="s" text-anchor="end">step 2 sees [t, t+6h], step 3 [t+6h, t+12h]</text>
+  <text x="20" y="360" class="s">loss = mean over the 3 steps;</text>
+  <text x="20" y="377" class="s">gradients flow through all of them</text>
+
+  <!-- legend -->
+  <g transform="translate(20,425)">
+    <rect x="0" y="0" width="28" height="18" rx="4" class="in"/>
+    <text x="38" y="14" class="l">input state (truth)</text>
+    <rect x="200" y="0" width="28" height="18" rx="4" class="tg"/>
+    <text x="238" y="14" class="l">target (truth, in the loss)</text>
+    <rect x="440" y="0" width="28" height="18" rx="4" class="pr"/>
+    <text x="478" y="14" class="l">model prediction fed back as input</text>
+    
+  </g>
+</svg>

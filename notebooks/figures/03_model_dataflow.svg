@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" font-family="Inter, 'Helvetica Neue', Arial, sans-serif">
+  <title>anemoi-models forward pass: tensor shapes at each stage</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+    </marker>
+    <marker id="arrMuted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a8984"/>
+    </marker>
+    <style>
+      .t  { font-size: 14px; font-weight: 700; fill: #0b0b0b; }
+      .c  { font-size: 11px; font-family: Menlo, Consolas, 'DejaVu Sans Mono', monospace; fill: #52514e; }
+      .s  { font-size: 12px; font-family: Menlo, Consolas, 'DejaVu Sans Mono', monospace; fill: #184f95; font-weight: 600; }
+      .n  { font-size: 11px; fill: #52514e; }
+      .lane { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+      .flow { stroke: #52514e; stroke-width: 2; fill: none; }
+      .skip { stroke: #8a8984; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+      .lbl { font-size: 11px; fill: #52514e; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="1200" height="600" fill="#fcfcfb"/>
+
+  <!-- title -->
+  <text x="24" y="34" font-size="19" font-weight="700" fill="#0b0b0b">One forward pass through an Anemoi model</text>
+  <text x="24" y="56" font-size="13" fill="#52514e">Shapes from the notebook: O96 grid (G = 40,320), icosahedral hidden mesh r5 (H = 10,242), 2 input steps, 99 input / 88 output variables, C = num_channels</text>
+
+  <!-- lanes -->
+  <rect x="12" y="76" width="1176" height="150" rx="10" fill="#eaf2fc"/>
+  <text x="26" y="96" class="lane" fill="#1c5cab">DATA NODES · O96 GRID · G = 40,320</text>
+  <rect x="12" y="410" width="1176" height="128" rx="10" fill="#fdefe8"/>
+  <text x="26" y="430" class="lane" fill="#b2461c">HIDDEN NODES · ICOSAHEDRAL MESH r5 · H = 10,242</text>
+
+  <!-- ============ TOP LANE ============ -->
+  <!-- Raw input -->
+  <rect x="24" y="108" width="176" height="104" rx="8" fill="#ffffff" stroke="#1baf7a" stroke-width="2"/>
+  <text x="36" y="132" class="t">Input batch</text>
+  <text x="36" y="150" class="c">physical units</text>
+  <text x="36" y="174" class="s">(B, T, E, G, V)</text>
+  <text x="36" y="194" class="s">(1, 2, 1, 40320, 99)</text>
+
+  <!-- Pre-processors -->
+  <rect x="218" y="108" width="176" height="104" rx="8" fill="#ffffff" stroke="#1baf7a" stroke-width="2"/>
+  <text x="230" y="132" class="t">Pre-processors</text>
+  <text x="230" y="150" class="c">imputer → normaliser</text>
+  <text x="230" y="168" class="n">uses dataset statistics</text>
+  <text x="230" y="194" class="s">(1, 2, 1, 40320, 99)</text>
+
+  <!-- Assemble input -->
+  <rect x="412" y="108" width="186" height="104" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="424" y="132" class="t">Assemble input</text>
+  <text x="424" y="150" class="c">flatten T·V, add attrs</text>
+  <text x="424" y="168" class="n">2×99 + 4 sin/cos + 8 trainable</text>
+  <text x="424" y="194" class="s">(B·E·G, 210)</text>
+
+  <!-- Assemble output -->
+  <rect x="790" y="108" width="186" height="104" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="802" y="132" class="t">Assemble output</text>
+  <text x="802" y="150" class="c">reshape + residual</text>
+  <text x="802" y="168" class="c">+ bounding (tp ≥ 0)</text>
+  <text x="802" y="194" class="s">(1, 1, 1, 40320, 88)</text>
+
+  <!-- Post-processors -->
+  <rect x="994" y="108" width="182" height="104" rx="8" fill="#ffffff" stroke="#1baf7a" stroke-width="2"/>
+  <text x="1006" y="132" class="t">Post-processors</text>
+  <text x="1006" y="150" class="c">denormalise → NaNs back</text>
+  <text x="1006" y="168" class="n">physical units again</text>
+  <text x="1006" y="194" class="s">(1, 1, 1, 40320, 88)</text>
+
+  <!-- top-lane flow arrows -->
+  <line x1="200" y1="160" x2="214" y2="160" class="flow" marker-end="url(#arr)"/>
+  <line x1="394" y1="160" x2="408" y2="160" class="flow" marker-end="url(#arr)"/>
+  <line x1="976" y1="160" x2="990" y2="160" class="flow" marker-end="url(#arr)"/>
+
+  <!-- residual skip: assemble input -> assemble output -->
+  <path d="M598,124 L786,124" class="skip" marker-end="url(#arrMuted)"/>
+  <text x="612" y="144" class="lbl">residual skip: last input step</text>
+  <text x="612" y="158" class="lbl">(prognostic variables only)</text>
+
+  <!-- ============ MIDDLE: ENCODER / DECODER ============ -->
+  <!-- Encoder -->
+  <rect x="412" y="262" width="186" height="112" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="424" y="286" class="t">Encoder</text>
+  <text x="424" y="304" class="c">GraphTransformerForward</text>
+  <text x="424" y="318" class="c">Mapper · data → hidden</text>
+  <text x="424" y="338" class="n">62,980 edges (cut-off)</text>
+  <text x="424" y="360" class="s">→ (B·H, C)</text>
+
+  <!-- Decoder -->
+  <rect x="790" y="262" width="186" height="112" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="802" y="286" class="t">Decoder</text>
+  <text x="802" y="304" class="c">GraphTransformerBackward</text>
+  <text x="802" y="318" class="c">Mapper · hidden → data</text>
+  <text x="802" y="338" class="n">120,960 edges (3-NN)</text>
+  <text x="802" y="360" class="s">→ (B·E·G, 88)</text>
+
+  <!-- arrows: assemble input -> encoder; decoder -> assemble output -->
+  <line x1="505" y1="212" x2="505" y2="258" class="flow" marker-end="url(#arr)"/>
+  <line x1="883" y1="262" x2="883" y2="216" class="flow" marker-end="url(#arr)"/>
+
+  <!-- decoder target features: assemble input -> decoder (dst nodes) -->
+  <path d="M598,196 C 690,196 700,300 786,300" class="skip" marker-end="url(#arrMuted)"/>
+  <text x="612" y="326" class="lbl">decoder query nodes =</text>
+  <text x="612" y="340" class="lbl">assembled input (B·E·G, 210)</text>
+
+  <!-- ============ BOTTOM LANE: hidden init + processor ============ -->
+  <!-- hidden init -->
+  <rect x="218" y="446" width="176" height="80" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="230" y="470" class="t">Hidden node attrs</text>
+  <text x="230" y="488" class="n">4 sin/cos + 8 trainable</text>
+  <text x="230" y="512" class="s">(B·H, 12)</text>
+  <path d="M394,486 C 440,486 470,430 480,378" class="flow" marker-end="url(#arr)"/>
+
+  <!-- processor -->
+  <rect x="560" y="444" width="270" height="88" rx="8" fill="#ffffff" stroke="#eb6834" stroke-width="2.4"/>
+  <text x="574" y="470" class="t">Processor  (L layers)</text>
+  <text x="574" y="488" class="c">GraphTransformerProcessor</text>
+  <text x="574" y="504" class="n">hidden → hidden · 81,840 multi-scale edges</text>
+  <text x="574" y="523" class="s">(B·H, C) → (B·H, C)</text>
+
+  <!-- encoder -> processor, processor -> decoder -->
+  <path d="M530,374 C 530,420 545,450 556,470" class="flow" marker-end="url(#arr)"/>
+  <path d="M830,486 C 870,486 875,420 870,378" class="flow" marker-end="url(#arr)"/>
+
+  <!-- latent skip -->
+  <path d="M600,446 C 600,404 790,404 790,442" class="skip" marker-end="url(#arrMuted)"/>
+  <text x="648" y="400" class="lbl">latent skip (+)</text>
+
+  <!-- ============ LEGEND ============ -->
+  <g transform="translate(24,560)">
+    <rect x="0" y="0" width="16" height="16" rx="3" fill="#ffffff" stroke="#1baf7a" stroke-width="2"/>
+    <text x="24" y="13" font-size="12" fill="#0b0b0b">AnemoiModelInterface (pre/post-processing, stored in the checkpoint)</text>
+    <rect x="440" y="0" width="16" height="16" rx="3" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+    <text x="464" y="13" font-size="12" fill="#0b0b0b">AnemoiModelEncProcDec</text>
+    <rect x="640" y="0" width="16" height="16" rx="3" fill="#ffffff" stroke="#eb6834" stroke-width="2.4"/>
+    <text x="664" y="13" font-size="12" fill="#0b0b0b">swappable processor (GNN / GraphTransformer / Transformer)</text>
+    <line x1="1050" y1="8" x2="1086" y2="8" class="skip"/>
+    <text x="1094" y="13" font-size="12" fill="#0b0b0b">skip path</text>
+  </g>
+</svg>
