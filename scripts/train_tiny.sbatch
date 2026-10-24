@@ -19,10 +19,9 @@
 # Extra arguments are passed straight to `anemoi-training train` as Hydra overrides.
 set -euo pipefail
 
-module load python/3.11.7
-source "${ANEMOI_VENV:-$SCRATCH/envs/anemoi}/bin/activate"
-
 REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+# Shared env (ANEMOI_VENV / ANEMOI_ENV_MODE=auto|sqfs|venv, see scripts/anemoi_env.sh)
+source "$REPO_DIR/scripts/anemoi_env.sh"
 CONFIG_DIR="${CONFIG_DIR:-$REPO_DIR/configs}"     # must be an ABSOLUTE path for `train`
 CONFIG_NAME="${CONFIG_NAME:-04_tiny_train}"
 

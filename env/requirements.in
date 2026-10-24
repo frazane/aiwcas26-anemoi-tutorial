@@ -1,0 +1,24 @@
+# Top-level requirements of the shared student environment (AIWCAS 2026 Anemoi tutorial).
+# The exact, hashed lock is env/requirements.txt; rebuild it and the env with scripts/build_shared_env.sh.
+#
+# torch/torchvision come from the PyTorch cu126 index (uv --torch-backend cu126).
+torch==2.10.0
+torchvision==0.25.0
+
+# Anemoi, the released versions that match the submodule pins (src/anemoi-core @ training-0.17.1,
+# src/anemoi-datasets @ 0.5.47). Installed from PyPI, NOT editable: students' clones do not matter.
+anemoi-datasets==0.5.47
+anemoi-graphs[tri]==0.9.8        # [tri] = trimesh, needed by TriNodes (default multi_scale graph)
+anemoi-models==0.19.0
+anemoi-training==0.17.1
+
+# `anemoi-training train` imports datashader unconditionally (plotting callbacks)
+datashader
+
+# Notebooks
+jupyterlab
+ipykernel
+nbconvert
+matplotlib
+cartopy
+plotly

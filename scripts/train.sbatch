@@ -22,7 +22,9 @@
 #
 # Arguments: <config.yaml> [hydra overrides...]. Relative config paths are resolved against the
 # submit directory, because `anemoi-training train --config-path` must be absolute.
-# Environment: ANEMOI_VENV (default $SCRATCH/envs/anemoi), REPO_DIR (default: the submit dir),
+# Environment: ANEMOI_VENV (default: the shared env in $FAST/aiwcas26/envs/anemoi),
+#              ANEMOI_ENV_MODE=auto|sqfs|venv (default auto: squashfs image if there is one, see
+#              scripts/anemoi_env.sh), REPO_DIR (default: the submit dir),
 #              SCOREBOARD=0 to skip the scoreboard row, SCOREBOARD_DIR to use another board.
 set -euo pipefail
 
@@ -37,8 +39,8 @@ CONFIG_DIR="$(dirname "$CONFIG")"
 CONFIG_NAME="$(basename "$CONFIG" .yaml)"
 REPO_DIR="${REPO_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
 
-module load python/3.11.7
-source "${ANEMOI_VENV:-$SCRATCH/envs/anemoi}/bin/activate"
+# Shared env, by default mounted from its squashfs image (imports from one file, not ~57k on Lustre)
+source "$REPO_DIR/scripts/anemoi_env.sh"
 
 LOG_DIR="$SCRATCH/aiwcas26/logs"
 mkdir -p "$LOG_DIR"
@@ -55,7 +57,6 @@ export TRITON_CACHE_DIR="${TRITON_CACHE_DIR:-$SCRATCH/.cache/triton}"   # keep J
 echo "== $(date -Is) job ${SLURM_JOB_ID} on $(hostname)"
 echo "== config: $CONFIG"
 echo "== overrides: $*"
-echo "== venv: ${ANEMOI_VENV:-$SCRATCH/envs/anemoi}"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 
 # Sample GPU memory every 2 s in the background (peak memory for the scoreboard)

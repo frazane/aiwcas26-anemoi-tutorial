@@ -13,7 +13,7 @@
 #   * writes the Slurm log to $SCRATCH/aiwcas26/logs/<job-name>-<jobid>.out (#SBATCH lines
 #     cannot expand $SCRATCH, so the path is passed here);
 #   * runs scripts/train.sbatch, which appends your run to the room scoreboard when it finishes.
-# Environment: ANEMOI_VENV (default $SCRATCH/envs/anemoi) is passed through to the job.
+# Environment: ANEMOI_VENV (default: the shared env) and ANEMOI_ENV_MODE (auto|sqfs|venv) are passed to the job.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

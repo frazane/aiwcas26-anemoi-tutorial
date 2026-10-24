@@ -12,18 +12,25 @@
 #SBATCH --output=%x-%j.out
 
 # Minimal check that the anemoi environment sees a GPU. Usage:
+#   sbatch scripts/smoke_test_gpu.sbatch                         # shared env, from its squashfs image
+#   ANEMOI_ENV_MODE=venv sbatch scripts/smoke_test_gpu.sbatch    # shared env, plain venv on Lustre
 #   ANEMOI_VENV=/path/to/venv sbatch scripts/smoke_test_gpu.sbatch
 set -euo pipefail
 
-module load python/3.11.7
-source "${ANEMOI_VENV:-$SCRATCH/envs/anemoi}/bin/activate"
+# The repo is where this script lives (sbatch runs a spooled copy, so ask Slurm for the original)
+SCRIPT="$(scontrol show job "${SLURM_JOB_ID:-0}" 2>/dev/null | grep -oP 'Command=\K\S+' || true)"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${SCRIPT:-$SLURM_SUBMIT_DIR/scripts/x}")/.." && pwd)}"
+source "$REPO_DIR/scripts/anemoi_env.sh"
 
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
 
 python - <<'PY'
+import sys, time
+t0 = time.time()
 import torch
 import torch_geometric
 import anemoi.datasets, anemoi.graphs, anemoi.models, anemoi.training
+print(f"imports took {time.time() - t0:.1f} s from {sys.prefix}")
 
 print("torch", torch.__version__, "cuda", torch.version.cuda, "available", torch.cuda.is_available())
 assert torch.cuda.is_available(), "no GPU visible"

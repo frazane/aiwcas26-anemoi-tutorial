@@ -12,8 +12,7 @@
 # for option B1 (987 MB download, 1.1 GB unpacked). Skip CERRA with CERRA=0.
 # Re-running skips everything that is already complete.
 #
-#   module load python/3.11.7
-#   source $SCRATCH/envs/anemoi/bin/activate
+#   source /leonardo_scratch/fast/tra26_aiwcas/aiwcas26/envs/anemoi/bin/activate   # shared env (README)
 #   bash scripts/download_data.sh            # default target: $WORK/a08trd25/data
 #   DATA_DIR=/some/where bash scripts/download_data.sh
 # -----------------------------------------------------------------------------
