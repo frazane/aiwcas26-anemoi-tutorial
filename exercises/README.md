@@ -1,6 +1,6 @@
 # Hour 2 · Pick your setup
 
-You have trained the hour-1 model. Now pick **one** option, turn its skeleton config into a working one,
+In hour 1 you configured the base model and watched it train for a few steps on the CPU (notebook 04). Now pick **one** option, turn its skeleton config into a working one,
 train it on one GPU for a few minutes, and see how it compares with the rest of the room.
 
 | | option | what you train | anemoi concept | difficulty | GPU job (tested) |
